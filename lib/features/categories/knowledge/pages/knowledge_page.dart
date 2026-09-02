@@ -44,39 +44,49 @@ class _KnowledgePageState extends State<KnowledgePage> {
 
   Future<void> _addEntry() async {
     if (_titleCtrl.text.isEmpty) return;
-    setState(() => _isLoading = true);
     final auth = context.read<AuthProvider>();
     if (auth.supabaseUser == null) return;
     final userId = auth.supabaseUser!.id;
     final xp = RankConfig.knowledgeXp[_selectedType] ?? 100;
 
-    final entry = KnowledgeEntry(
-      id: '',
-      userId: userId,
-      type: _selectedType.toLowerCase(),
-      title: _titleCtrl.text.trim(),
-      xpEarned: xp,
-      addedAt: DateTime.now(),
-    );
-    await UserStatsService.addKnowledgeEntry(entry);
-    final prevStats = auth.stats;
-    final newStats = await UserStatsService.updateCategoryXp(userId, 'knowledge', xp);
-    if (newStats != null) {
-      await auth.updateStats(newStats);
-      if (prevStats != null && mounted) {
-        final prevRank = RankConfig.getRankInfo(prevStats.totalXp).name;
-        final newRankName = RankConfig.getRankInfo(newStats.totalXp).name;
-        if (prevRank != newRankName) {
-          final rankInfo = RankConfig.getRankInfo(newStats.totalXp);
-          RankUpCelebration.show(context, newRank: rankInfo.name, emoji: rankInfo.emoji, rankColor: rankInfo.color);
-        } else {
-          AchievementPopup.show(context, title: '$_selectedType Added!', description: '"${_titleCtrl.text}" recorded.', xpReward: xp);
+    setState(() => _isLoading = true);
+
+    try {
+      final entry = KnowledgeEntry(
+        id: '',
+        userId: userId,
+        type: _selectedType.toLowerCase(),
+        title: _titleCtrl.text.trim(),
+        xpEarned: xp,
+        addedAt: DateTime.now(),
+      );
+      await UserStatsService.addKnowledgeEntry(entry);
+      final prevStats = auth.stats;
+      final newStats = await UserStatsService.updateCategoryXp(userId, 'knowledge', xp);
+      if (newStats != null) {
+        await auth.updateStats(newStats);
+        if (prevStats != null && mounted) {
+          final prevRank = RankConfig.getRankInfo(prevStats.totalXp).name;
+          final newRankName = RankConfig.getRankInfo(newStats.totalXp).name;
+          if (prevRank != newRankName) {
+            final rankInfo = RankConfig.getRankInfo(newStats.totalXp);
+            RankUpCelebration.show(context, newRank: rankInfo.name, emoji: rankInfo.emoji, rankColor: rankInfo.color);
+          } else {
+            AchievementPopup.show(context, title: '$_selectedType Added!', description: '"${_titleCtrl.text}" recorded.', xpReward: xp);
+          }
         }
       }
+      _titleCtrl.clear();
+      await _loadEntries();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    _titleCtrl.clear();
-    await _loadEntries();
-    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
@@ -99,7 +109,7 @@ class _KnowledgePageState extends State<KnowledgePage> {
               decoration: BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.knowledge.withOpacity(0.3)),
+                border: Border.all(color: AppColors.knowledge.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -146,7 +156,7 @@ class _KnowledgePageState extends State<KnowledgePage> {
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.knowledge.withOpacity(0.15) : AppColors.card,
+                      color: isSelected ? AppColors.knowledge.withValues(alpha: 0.15) : AppColors.card,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isSelected ? AppColors.knowledge : AppColors.cardBorder,

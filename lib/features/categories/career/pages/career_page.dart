@@ -49,43 +49,54 @@ class _CareerPageState extends State<CareerPage>
 
   Future<void> _addEntry(String type, String title, int xp) async {
     if (title.isEmpty) return;
-    setState(() => _isLoading = true);
     final auth = context.read<AuthProvider>();
     if (auth.supabaseUser == null) return;
     final userId = auth.supabaseUser!.id;
 
-    final entry = CareerEntry(
-      id: '',
-      userId: userId,
-      type: type,
-      title: title,
-      xpEarned: xp,
-      addedAt: DateTime.now(),
-    );
-    await UserStatsService.addCareerEntry(entry);
-    final prevStats = auth.stats;
-    final newStats = await UserStatsService.updateCategoryXp(userId, 'career', xp);
-    if (newStats != null) {
-      await auth.updateStats(newStats);
-      if (prevStats != null && mounted) {
-        final prevRank = RankConfig.getRankInfo(prevStats.totalXp).name;
-        final newRankName = RankConfig.getRankInfo(newStats.totalXp).name;
-        if (prevRank != newRankName) {
-          final rankInfo = RankConfig.getRankInfo(newStats.totalXp);
-          RankUpCelebration.show(context, newRank: rankInfo.name, emoji: rankInfo.emoji, rankColor: rankInfo.color);
-        } else {
-          AchievementPopup.show(context, title: 'Career Updated!', description: '$title added.', xpReward: xp);
+    setState(() => _isLoading = true);
+
+    try {
+      final entry = CareerEntry(
+        id: '',
+        userId: userId,
+        type: type,
+        title: title,
+        xpEarned: xp,
+        addedAt: DateTime.now(),
+      );
+      await UserStatsService.addCareerEntry(entry);
+      final prevStats = auth.stats;
+      final newStats = await UserStatsService.updateCategoryXp(userId, 'career', xp);
+      if (newStats != null) {
+        await auth.updateStats(newStats);
+        if (prevStats != null && mounted) {
+          final prevRank = RankConfig.getRankInfo(prevStats.totalXp).name;
+          final newRankName = RankConfig.getRankInfo(newStats.totalXp).name;
+          if (prevRank != newRankName) {
+            final rankInfo = RankConfig.getRankInfo(newStats.totalXp);
+            RankUpCelebration.show(context, newRank: rankInfo.name, emoji: rankInfo.emoji, rankColor: rankInfo.color);
+          } else {
+            AchievementPopup.show(context, title: 'Career Updated!', description: '$title added.', xpReward: xp);
+          }
         }
       }
+      await _loadEntries();
+      if (mounted) {
+        setState(() {
+          _selectedSkill = null;
+          _selectedProject = null;
+          _customTitleCtrl.clear();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    await _loadEntries();
-    setState(() {
-      _selectedSkill = null;
-      _selectedProject = null;
-      _customTitleCtrl.clear();
-      _isLoading = false;
-    });
   }
 
   @override
@@ -120,7 +131,7 @@ class _CareerPageState extends State<CareerPage>
               decoration: BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.career.withOpacity(0.3)),
+                border: Border.all(color: AppColors.career.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -158,7 +169,7 @@ class _CareerPageState extends State<CareerPage>
                               duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.career.withOpacity(0.2) : AppColors.card,
+                                color: isSelected ? AppColors.career.withValues(alpha: 0.2) : AppColors.card,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: isSelected ? AppColors.career : AppColors.cardBorder,
@@ -226,7 +237,7 @@ class _CareerPageState extends State<CareerPage>
                               duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primary.withOpacity(0.2) : AppColors.card,
+                                color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : AppColors.card,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: isSelected ? AppColors.primary : AppColors.cardBorder,
@@ -345,7 +356,7 @@ class _CareerPageState extends State<CareerPage>
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: AppColors.xpGreen.withOpacity(0.1),
+                                    color: AppColors.xpGreen.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text('+${e.xpEarned} XP', style: const TextStyle(color: AppColors.xpGreen, fontWeight: FontWeight.w700, fontSize: 12)),

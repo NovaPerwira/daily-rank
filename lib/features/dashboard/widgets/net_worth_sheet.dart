@@ -131,7 +131,7 @@ class _NetWorthSheetState extends State<NetWorthSheet> {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border.all(color: rank.color.withOpacity(0.3)),
+          border: Border.all(color: rank.color.withValues(alpha: 0.3)),
           boxShadow: [
             BoxShadow(
               color: rank.glowColor,
@@ -247,7 +247,7 @@ class _NetWorthSheetState extends State<NetWorthSheet> {
                         decoration: InputDecoration(
                           prefixText: '$prefix ',
                           prefixStyle: TextStyle(
-                            color: rank.color.withOpacity(0.6),
+                            color: rank.color.withValues(alpha: 0.6),
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
                           ),
@@ -258,14 +258,14 @@ class _NetWorthSheetState extends State<NetWorthSheet> {
                             fontWeight: FontWeight.w800,
                           ),
                           filled: true,
-                          fillColor: rank.color.withOpacity(0.06),
+                          fillColor: rank.color.withValues(alpha: 0.06),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: rank.color.withOpacity(0.3)),
+                            borderSide: BorderSide(color: rank.color.withValues(alpha: 0.3)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: rank.color.withOpacity(0.3)),
+                            borderSide: BorderSide(color: rank.color.withValues(alpha: 0.3)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -346,10 +346,10 @@ class _NetWorthSheetState extends State<NetWorthSheet> {
                                 width: 48,
                                 height: 52,
                                 decoration: BoxDecoration(
-                                  color: AppColors.danger.withOpacity(0.1),
+                                  color: AppColors.danger.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: AppColors.danger.withOpacity(0.3),
+                                    color: AppColors.danger.withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: const Icon(
@@ -434,9 +434,9 @@ class _ProgressPreview extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: rank.color.withOpacity(0.07),
+        color: rank.color.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: rank.color.withOpacity(0.2)),
+        border: Border.all(color: rank.color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -478,7 +478,7 @@ class _ProgressPreview extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(4),
                       gradient: LinearGradient(
-                        colors: [rank.color.withOpacity(0.7), rank.color],
+                        colors: [rank.color.withValues(alpha: 0.7), rank.color],
                       ),
                       boxShadow: [
                         BoxShadow(

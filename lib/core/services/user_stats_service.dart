@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'dart:html';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_models.dart';
 import '../models/category_models.dart';
@@ -66,10 +67,15 @@ class UserStatsService {
       );
       return;
     }
-    await _client.from('profiles').insert({
-      'user_id': userId,
-      'username': username,
-    });
+    try {
+      await _client.from('profiles').upsert(
+        {'user_id': userId, 'username': username},
+        onConflict: 'user_id',
+        ignoreDuplicates: true,
+      );
+    } catch (e) {
+      debugPrint('createProfile error (may already exist): $e');
+    }
   }
 
   static Future<void> updateUsername(String userId, String username) async {
@@ -91,7 +97,7 @@ class UserStatsService {
         .eq('user_id', userId);
   }
 
-  static Future<String?> uploadAvatar(String userId, File imageFile) async {
+  static Future<String?> uploadAvatar(String userId, dynamic imageFile) async {
     if (useMock) {
       const url = 'https://picsum.photos/200';
       if (_mockProfile != null) {
@@ -107,11 +113,26 @@ class UserStatsService {
     }
     try {
       final path = 'avatars/$userId.jpg';
-      await _client.storage.from('avatars').upload(
-            path,
-            imageFile,
-            fileOptions: const FileOptions(upsert: true),
-          );
+      if (kIsWeb) {
+        // On web, imageFile is XFile — read as bytes
+        final xfile = imageFile as XFile;
+        final bytes = await xfile.readAsBytes();
+        await _client.storage.from('avatars').uploadBinary(
+          path,
+          bytes,
+          fileOptions: const FileOptions(
+            upsert: true,
+            contentType: 'image/jpeg',
+          ),
+        );
+      } else {
+        // On native, imageFile is dart:io File
+        await _client.storage.from('avatars').upload(
+          path,
+          imageFile as File,
+          fileOptions: const FileOptions(upsert: true),
+        );
+      }
       final url = _client.storage.from('avatars').getPublicUrl(path);
       await _client
           .from('profiles')
@@ -156,14 +177,22 @@ class UserStatsService {
       );
       return;
     }
-    await _client.from('user_stats').insert({
-      'user_id': userId,
-      'financial_xp': 0,
-      'career_xp': 0,
-      'habit_xp': 0,
-      'knowledge_xp': 0,
-      'health_xp': 0,
-    });
+    try {
+      await _client.from('user_stats').upsert(
+        {
+          'user_id': userId,
+          'financial_xp': 0,
+          'career_xp': 0,
+          'habit_xp': 0,
+          'knowledge_xp': 0,
+          'health_xp': 0,
+        },
+        onConflict: 'user_id',
+        ignoreDuplicates: true,
+      );
+    } catch (e) {
+      debugPrint('createUserStats error (may already exist): $e');
+    }
   }
 
   static Future<UserStats?> updateCategoryXp(
@@ -339,6 +368,16 @@ class UserStatsService {
             amount: 15000000,
             category: 'Gaji Pokok',
             date: DateTime.now().subtract(const Duration(days: 2)),
+            incomeType: 'fixed',
+          ),
+          TransactionModel(
+            id: 'mock-tx-1b',
+            userId: userId,
+            type: 'income',
+            amount: 4000000,
+            category: 'Freelance',
+            date: DateTime.now().subtract(const Duration(days: 1)),
+            incomeType: 'side',
           ),
           TransactionModel(
             id: 'mock-tx-2',
@@ -356,6 +395,47 @@ class UserStatsService {
             category: 'Dana Darurat',
             date: DateTime.now(),
           ),
+          // Previous months for chart
+          TransactionModel(
+            id: 'mock-tx-4',
+            userId: userId,
+            type: 'saving',
+            amount: 2500000,
+            category: 'Dana Darurat',
+            date: DateTime.now().subtract(const Duration(days: 35)),
+          ),
+          TransactionModel(
+            id: 'mock-tx-5',
+            userId: userId,
+            type: 'saving',
+            amount: 2000000,
+            category: 'Dana Darurat',
+            date: DateTime.now().subtract(const Duration(days: 65)),
+          ),
+          TransactionModel(
+            id: 'mock-tx-6',
+            userId: userId,
+            type: 'saving',
+            amount: 3500000,
+            category: 'Tabungan Rumah',
+            date: DateTime.now().subtract(const Duration(days: 95)),
+          ),
+          TransactionModel(
+            id: 'mock-tx-7',
+            userId: userId,
+            type: 'saving',
+            amount: 1500000,
+            category: 'Dana Darurat',
+            date: DateTime.now().subtract(const Duration(days: 125)),
+          ),
+          TransactionModel(
+            id: 'mock-tx-8',
+            userId: userId,
+            type: 'saving',
+            amount: 4000000,
+            category: 'Tabungan Rumah',
+            date: DateTime.now().subtract(const Duration(days: 155)),
+          ),
         ]);
       }
       return _mockTransactions;
@@ -366,7 +446,7 @@ class UserStatsService {
           .select()
           .eq('user_id', userId)
           .order('date', ascending: false)
-          .limit(20);
+          .limit(100); // show all recent transactions
       return (data as List).map((e) => TransactionModel.fromJson(e)).toList();
     } catch (e) {
       debugPrint('Error getting transactions: $e');
@@ -380,6 +460,69 @@ class UserStatsService {
       return;
     }
     await _client.from('transactions').insert(tx.toJson());
+  }
+
+  static Future<void> deleteTransaction(String txId) async {
+    if (useMock) {
+      _mockTransactions.removeWhere((t) => t.id == txId);
+      return;
+    }
+    await _client.from('transactions').delete().eq('id', txId);
+  }
+
+  static Future<void> updateTransaction(TransactionModel tx) async {
+    if (useMock) {
+      final idx = _mockTransactions.indexWhere((t) => t.id == tx.id);
+      if (idx != -1) _mockTransactions[idx] = tx;
+      return;
+    }
+    try {
+      await _client
+          .from('transactions')
+          .update(tx.toUpdateJson())
+          .eq('id', tx.id);
+    } catch (e) {
+      debugPrint('Error updating transaction: $e');
+      rethrow;
+    }
+  }
+
+  // ── Monthly Savings History (for chart) ──────────────────────────────────
+  /// Returns a list of {month: DateTime, amount: double} for last 6 months
+  static Future<List<Map<String, dynamic>>> getMonthlySavingsHistory(
+      String userId, {List<TransactionModel>? preloadedTxs}) async {
+    final txs = preloadedTxs ?? (useMock
+        ? _mockTransactions
+        : await getTransactions(userId));
+
+    final now = DateTime.now();
+    final result = <Map<String, dynamic>>[];
+    for (int i = 5; i >= 0; i--) {
+      final month = DateTime(now.year, now.month - i, 1);
+      final total = txs
+          .where((t) =>
+              (t.type == 'saving' || t.type == 'investment') &&
+              t.date.month == month.month &&
+              t.date.year == month.year)
+          .fold(0.0, (sum, t) => sum + t.amount);
+      result.add({'month': month, 'amount': total});
+    }
+    return result;
+  }
+
+  // ── Monthly Streak (active days with any transaction) ────────────────────
+  /// Returns set of day numbers that have at least 1 transaction this month
+  static Future<Set<int>> getMonthlyActivedays(
+      String userId, {List<TransactionModel>? preloadedTxs}) async {
+    final txs = preloadedTxs ?? (useMock
+        ? _mockTransactions
+        : await getTransactions(userId));
+
+    final now = DateTime.now();
+    return txs
+        .where((t) => t.date.month == now.month && t.date.year == now.year)
+        .map((t) => t.date.day)
+        .toSet();
   }
 
   // ── Career Entries ─────────────────────────────────────────────

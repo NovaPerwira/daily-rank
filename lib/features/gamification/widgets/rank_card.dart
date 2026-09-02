@@ -7,9 +7,9 @@ class RankCard extends StatelessWidget {
   final RankProgress progress;
 
   const RankCard({
-    Key? key,
+    super.key,
     required this.progress,
-  }) : super(key: key);
+  });
 
   String _formatCurrency(double amount) {
     return FinancialRankCalculator.formatIdr(amount);
@@ -27,10 +27,10 @@ class RankCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E2C).withOpacity(0.6),
+            color: const Color(0xFF1E1E2C).withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: rank.primaryColor.withOpacity(0.3),
+              color: rank.primaryColor.withValues(alpha: 0.3),
               width: 1.5,
             ),
             boxShadow: [
@@ -54,7 +54,7 @@ class RankCard extends StatelessWidget {
                       Text(
                         'Financial Rank',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           letterSpacing: 1.2,
@@ -93,7 +93,7 @@ class RankCard extends StatelessWidget {
               Text(
                 'Net Worth:',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
+                  color: Colors.white.withValues(alpha: 0.6),
                   fontSize: 12,
                 ),
               ),
@@ -118,14 +118,14 @@ class RankCard extends StatelessWidget {
                   Text(
                     'Progress to next star:',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 12,
                     ),
                   ),
                   Text(
                     '${rank.displayName} ⭐${progress.star} → ⭐${progress.star < 5 ? progress.star + 1 : "MAX"}',
                     style: TextStyle(
-                      color: rank.primaryColor.withOpacity(0.9),
+                      color: rank.primaryColor.withValues(alpha: 0.9),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -144,7 +144,7 @@ class RankCard extends StatelessWidget {
                         height: 8,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: LayoutBuilder(
@@ -179,7 +179,7 @@ class RankCard extends StatelessWidget {
                   Text(
                     _formatCurrency(progress.currentStarStart),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -187,7 +187,7 @@ class RankCard extends StatelessWidget {
                   Text(
                     _formatCurrency(progress.nextStarTarget),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 12,
                     ),
                   ),

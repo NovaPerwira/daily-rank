@@ -41,6 +41,7 @@ class AuthProvider extends ChangeNotifier {
 
     SupabaseService.client.auth.onAuthStateChange.listen((event) {
       _supabaseUser = event.session?.user;
+      debugPrint('Auth state changed: ${event.event}, user: $_supabaseUser');
       if (_supabaseUser != null) {
         _status = AuthStatus.authenticated;
         _loadUserData();
@@ -62,8 +63,23 @@ class AuthProvider extends ChangeNotifier {
     }
 
     if (_supabaseUser == null) return;
-    _profile = await UserStatsService.getProfile(_supabaseUser!.id);
-    _stats = await UserStatsService.getUserStats(_supabaseUser!.id);
+    final userId = _supabaseUser!.id;
+
+    _profile = await UserStatsService.getProfile(userId);
+    _stats = await UserStatsService.getUserStats(userId);
+
+    // Auto-create profile/stats if missing (e.g., after email confirmation)
+    if (_profile == null) {
+      final email = _supabaseUser!.email ?? '';
+      final username = email.split('@').first;
+      await UserStatsService.createProfile(userId, username);
+      _profile = await UserStatsService.getProfile(userId);
+    }
+    if (_stats == null) {
+      await UserStatsService.createUserStats(userId);
+      _stats = await UserStatsService.getUserStats(userId);
+    }
+
     notifyListeners();
   }
 
@@ -76,6 +92,18 @@ class AuthProvider extends ChangeNotifier {
 
     if (_supabaseUser == null) return;
     _stats = await UserStatsService.getUserStats(_supabaseUser!.id);
+    notifyListeners();
+  }
+
+  /// Re-fetch profile data (e.g. after avatar upload).
+  Future<void> refreshProfile() async {
+    if (UserStatsService.useMock) {
+      _profile = await UserStatsService.getProfile('mock-user-id');
+      notifyListeners();
+      return;
+    }
+    if (_supabaseUser == null) return;
+    _profile = await UserStatsService.getProfile(_supabaseUser!.id);
     notifyListeners();
   }
 
@@ -109,12 +137,21 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (response.user != null) {
-        await UserStatsService.createProfile(response.user!.id, username);
-        await UserStatsService.createUserStats(response.user!.id);
-        await _loadUserData();
-        _status = AuthStatus.authenticated;
-        notifyListeners();
-        return true;
+        if (response.session != null) {
+          // Session is active (email confirmation disabled) — safe to insert via RLS
+          await UserStatsService.createProfile(response.user!.id, username);
+          await UserStatsService.createUserStats(response.user!.id);
+          await _loadUserData();
+          _status = AuthStatus.authenticated;
+          notifyListeners();
+          return true;
+        } else {
+          // Email confirmation required — session not yet active
+          _errorMessage = 'Pendaftaran berhasil! Periksa email kamu untuk konfirmasi akun.';
+          _status = AuthStatus.unauthenticated;
+          notifyListeners();
+          return false;
+        }
       }
       _status = AuthStatus.unauthenticated;
       notifyListeners();
@@ -125,7 +162,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      _errorMessage = 'An unexpected error occurred';
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
@@ -167,7 +204,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      _errorMessage = 'An unexpected error occurred';
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;

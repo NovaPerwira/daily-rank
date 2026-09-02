@@ -20,15 +20,14 @@ class FinancialPage extends StatefulWidget {
 
 class _FinancialPageState extends State<FinancialPage> {
   final _formKey = GlobalKey<FormState>();
-  final _incomeCtrl = TextEditingController();
+  final _fixedIncomeCtrl = TextEditingController();
+  final _sideIncomeCtrl = TextEditingController();
   final _expenseCtrl = TextEditingController();
   final _savingCtrl = TextEditingController();
   final _investmentCtrl = TextEditingController();
   bool _hasDebt = false;
   bool _isLoading = false;
   List<TransactionModel> _transactions = [];
-  final _formatter = NumberFormat('#,###', 'id_ID');
-
   @override
   void initState() {
     super.initState();
@@ -37,7 +36,8 @@ class _FinancialPageState extends State<FinancialPage> {
 
   @override
   void dispose() {
-    _incomeCtrl.dispose();
+    _fixedIncomeCtrl.dispose();
+    _sideIncomeCtrl.dispose();
     _expenseCtrl.dispose();
     _savingCtrl.dispose();
     _investmentCtrl.dispose();
@@ -52,7 +52,9 @@ class _FinancialPageState extends State<FinancialPage> {
   }
 
   int _calculateFinancialXp() {
-    final income = double.tryParse(_incomeCtrl.text.replaceAll(',', '')) ?? 0;
+    final fixedIncome = double.tryParse(_fixedIncomeCtrl.text.replaceAll(',', '')) ?? 0;
+    final sideIncome = double.tryParse(_sideIncomeCtrl.text.replaceAll(',', '')) ?? 0;
+    final income = fixedIncome + sideIncome;
     final saving = double.tryParse(_savingCtrl.text.replaceAll(',', '')) ?? 0;
     final investment = double.tryParse(_investmentCtrl.text.replaceAll(',', '')) ?? 0;
 
@@ -76,64 +78,79 @@ class _FinancialPageState extends State<FinancialPage> {
 
   Future<void> _submitFinancial() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
 
     final auth = context.read<AuthProvider>();
     if (auth.supabaseUser == null) return;
     final userId = auth.supabaseUser!.id;
 
-    final income = double.tryParse(_incomeCtrl.text.replaceAll(',', '')) ?? 0;
-    final expense = double.tryParse(_expenseCtrl.text.replaceAll(',', '')) ?? 0;
-    final saving = double.tryParse(_savingCtrl.text.replaceAll(',', '')) ?? 0;
-    final investment = double.tryParse(_investmentCtrl.text.replaceAll(',', '')) ?? 0;
+    setState(() => _isLoading = true);
 
-    // Save transactions
-    final now = DateTime.now();
-    final txs = [
-      if (income > 0) TransactionModel(id: '', userId: userId, type: 'income', amount: income, date: now),
-      if (expense > 0) TransactionModel(id: '', userId: userId, type: 'expense', amount: expense, date: now),
-      if (saving > 0) TransactionModel(id: '', userId: userId, type: 'saving', amount: saving, date: now),
-      if (investment > 0) TransactionModel(id: '', userId: userId, type: 'investment', amount: investment, date: now),
-    ];
-    for (final tx in txs) {
-      await UserStatsService.addTransaction(tx);
-    }
+    try {
+      final fixedIncome = double.tryParse(_fixedIncomeCtrl.text.replaceAll(',', '')) ?? 0;
+      final sideIncome = double.tryParse(_sideIncomeCtrl.text.replaceAll(',', '')) ?? 0;
+      final expense = double.tryParse(_expenseCtrl.text.replaceAll(',', '')) ?? 0;
+      final saving = double.tryParse(_savingCtrl.text.replaceAll(',', '')) ?? 0;
+      final investment = double.tryParse(_investmentCtrl.text.replaceAll(',', '')) ?? 0;
 
-    final xpEarned = _calculateFinancialXp();
-    final prevStats = auth.stats;
-    final newStats = await UserStatsService.updateCategoryXp(userId, 'financial', xpEarned);
+      // Save transactions
+      final now = DateTime.now();
+      final txs = [
+        if (fixedIncome > 0) TransactionModel(id: '', userId: userId, type: 'income', amount: fixedIncome, date: now, incomeType: 'fixed', category: 'Pendapatan Tetap'),
+        if (sideIncome > 0) TransactionModel(id: '', userId: userId, type: 'income', amount: sideIncome, date: now, incomeType: 'side', category: 'Pendapatan Sampingan'),
+        if (expense > 0) TransactionModel(id: '', userId: userId, type: 'expense', amount: expense, date: now, category: 'Pengeluaran'),
+        if (saving > 0) TransactionModel(id: '', userId: userId, type: 'saving', amount: saving, date: now, category: 'Tabungan'),
+        if (investment > 0) TransactionModel(id: '', userId: userId, type: 'investment', amount: investment, date: now, category: 'Investasi'),
+      ];
+      for (final tx in txs) {
+        await UserStatsService.addTransaction(tx);
+      }
 
-    if (newStats != null) {
-      await auth.updateStats(newStats);
-      // Check rank up
-      if (prevStats != null && mounted) {
-        final prevRank = RankConfig.getRankInfo(prevStats.totalXp).name;
-        final newRank = RankConfig.getRankInfo(newStats.totalXp).name;
-        if (prevRank != newRank) {
-          final rankInfo = RankConfig.getRankInfo(newStats.totalXp);
-          RankUpCelebration.show(
-            context,
-            newRank: rankInfo.name,
-            emoji: rankInfo.emoji,
-            rankColor: rankInfo.color,
-          );
-        } else if (xpEarned > 0 && mounted) {
-          AchievementPopup.show(
-            context,
-            title: 'Financial Log Added!',
-            description: 'Your financial data has been recorded.',
-            xpReward: xpEarned,
-          );
+      final xpEarned = _calculateFinancialXp();
+      final prevStats = auth.stats;
+      final newStats = await UserStatsService.updateCategoryXp(userId, 'financial', xpEarned);
+
+      if (newStats != null) {
+        await auth.updateStats(newStats);
+        if (prevStats != null && mounted) {
+          final prevRank = RankConfig.getRankInfo(prevStats.totalXp).name;
+          final newRank = RankConfig.getRankInfo(newStats.totalXp).name;
+          if (prevRank != newRank) {
+            final rankInfo = RankConfig.getRankInfo(newStats.totalXp);
+            RankUpCelebration.show(
+              context,
+              newRank: rankInfo.name,
+              emoji: rankInfo.emoji,
+              rankColor: rankInfo.color,
+            );
+          } else if (xpEarned > 0 && mounted) {
+            AchievementPopup.show(
+              context,
+              title: 'Financial Log Added!',
+              description: 'Your financial data has been recorded.',
+              xpReward: xpEarned,
+            );
+          }
         }
       }
-    }
 
-    await _loadTransactions();
-    _incomeCtrl.clear();
-    _expenseCtrl.clear();
-    _savingCtrl.clear();
-    _investmentCtrl.clear();
-    if (mounted) setState(() => _isLoading = false);
+      await _loadTransactions();
+      _fixedIncomeCtrl.clear();
+      _sideIncomeCtrl.clear();
+      _expenseCtrl.clear();
+      _savingCtrl.clear();
+      _investmentCtrl.clear();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -141,7 +158,9 @@ class _FinancialPageState extends State<FinancialPage> {
     final auth = context.watch<AuthProvider>();
     final financialXp = auth.stats?.financialXp ?? 0;
     final savingRate = () {
-      final i = double.tryParse(_incomeCtrl.text.replaceAll(',', '')) ?? 0;
+      final fi = double.tryParse(_fixedIncomeCtrl.text.replaceAll(',', '')) ?? 0;
+      final si = double.tryParse(_sideIncomeCtrl.text.replaceAll(',', '')) ?? 0;
+      final i = fi + si;
       final s = double.tryParse(_savingCtrl.text.replaceAll(',', '')) ?? 0;
       return i > 0 ? (s / i * 100) : 0.0;
     }();
@@ -164,7 +183,7 @@ class _FinancialPageState extends State<FinancialPage> {
               decoration: BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.financial.withOpacity(0.3)),
+                border: Border.all(color: AppColors.financial.withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
@@ -186,11 +205,20 @@ class _FinancialPageState extends State<FinancialPage> {
               child: Column(
                 children: [
                   _NumberField(
-                    controller: _incomeCtrl,
-                    label: 'Income',
+                    controller: _fixedIncomeCtrl,
+                    label: 'Pendapatan Tetap (Gaji)',
                     hint: '0',
                     prefix: 'Rp',
                     color: AppColors.xpGreen,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  _NumberField(
+                    controller: _sideIncomeCtrl,
+                    label: 'Pendapatan Sampingan',
+                    hint: '0',
+                    prefix: 'Rp',
+                    color: AppColors.gold,
                     onChanged: (_) => setState(() {}),
                   ),
                   const SizedBox(height: 12),
@@ -240,7 +268,7 @@ class _FinancialPageState extends State<FinancialPage> {
                         Switch(
                           value: _hasDebt,
                           onChanged: (v) => setState(() => _hasDebt = v),
-                          activeColor: AppColors.danger,
+                          activeThumbColor: AppColors.danger,
                           inactiveThumbColor: AppColors.xpGreen,
                         ),
                       ],
@@ -257,9 +285,9 @@ class _FinancialPageState extends State<FinancialPage> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.financial.withOpacity(0.08),
+                  color: AppColors.financial.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.financial.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.financial.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -344,7 +372,7 @@ class _NumberField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         prefixText: '$prefix ',
-        prefixStyle: TextStyle(color: color.withOpacity(0.7), fontWeight: FontWeight.w600),
+        prefixStyle: TextStyle(color: color.withValues(alpha: 0.7), fontWeight: FontWeight.w600),
         labelStyle: const TextStyle(color: AppColors.textSecondary),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -394,7 +422,7 @@ class _TransactionTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  tx.type.toUpperCase(),
+                  '${tx.type == 'expense' ? '-' : '+'} ${tx.category ?? tx.type.toUpperCase()}',
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, letterSpacing: 1),
                 ),
                 Text(
@@ -405,7 +433,7 @@ class _TransactionTile extends StatelessWidget {
             ),
           ),
           Text(
-            'Rp ${NumberFormat('#,###', 'id_ID').format(tx.amount)}',
+            '${tx.type == 'expense' ? '-' : '+'} Rp ${NumberFormat('#,###', 'id_ID').format(tx.amount)}',
             style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 15),
           ),
         ],

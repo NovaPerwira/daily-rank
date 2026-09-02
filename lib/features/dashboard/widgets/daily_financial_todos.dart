@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:confetti/confetti.dart';
 import 'package:life_rank/core/constants/app_colors.dart';
 
 import 'package:life_rank/core/models/category_models.dart';
@@ -7,6 +8,7 @@ import 'package:life_rank/core/models/category_models.dart';
 /// Daily financial todo list with motivational quotes + custom todo support
 class DailyFinancialTodos extends StatefulWidget {
   final List<FinancialTodo> todos;
+  final Set<String> highlightedIds;
   final void Function(FinancialTodo todo) onComplete;
   final void Function(FinancialTodo todo) onDelete;
   final void Function(String title) onAddCustom;
@@ -14,6 +16,7 @@ class DailyFinancialTodos extends StatefulWidget {
   const DailyFinancialTodos({
     super.key,
     required this.todos,
+    this.highlightedIds = const {},
     required this.onComplete,
     required this.onDelete,
     required this.onAddCustom,
@@ -26,10 +29,18 @@ class DailyFinancialTodos extends StatefulWidget {
 class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
   bool _showAddField = false;
   final _addCtrl = TextEditingController();
+  late ConfettiController _confettiCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiCtrl = ConfettiController(duration: const Duration(milliseconds: 1200));
+  }
 
   @override
   void dispose() {
     _addCtrl.dispose();
+    _confettiCtrl.dispose();
     super.dispose();
   }
 
@@ -41,6 +52,11 @@ class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
     setState(() => _showAddField = false);
   }
 
+  void _completeTodoWithEffect(FinancialTodo todo) {
+    _confettiCtrl.play();
+    widget.onComplete(todo);
+  }
+
   int get _completed => widget.todos.where((t) => t.completed).length;
   int get _total => widget.todos.length;
   int get _totalPoints =>
@@ -48,6 +64,10 @@ class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
 
   @override
   Widget build(BuildContext context) {
+    final completedCount = _completed;
+    final totalCount = _total;
+    final progressPct = totalCount == 0 ? 0.0 : completedCount / totalCount;
+
     // Daily motivational quote
     final quotes = [
       'Kekayaan bukan tentang seberapa banyak yang kamu punya, tapi seberapa sedikit yang kamu butuhkan. 🌿',
@@ -58,9 +78,22 @@ class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
     ];
     final quoteIdx = DateTime.now().day % quotes.length;
 
-    return Column(
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Overall Mission Progress Bar ──────────────────────────────────
+        _MissionProgressBar(
+          completed: completedCount,
+          total: totalCount,
+          progress: progressPct,
+        ),
+
+        const SizedBox(height: 16),
+
         // Motivational quote card
         _MotivationCard(quote: quotes[quoteIdx]),
 
@@ -101,10 +134,10 @@ class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppColors.xpGreen.withOpacity(0.12),
+                      color: AppColors.xpGreen.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: AppColors.xpGreen.withOpacity(0.3),
+                        color: AppColors.xpGreen.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
@@ -128,10 +161,10 @@ class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.financial.withOpacity(0.12),
+                    color: AppColors.financial.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: AppColors.financial.withOpacity(0.3),
+                      color: AppColors.financial.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Text(
@@ -154,10 +187,12 @@ class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
         ...widget.todos.asMap().entries.map((entry) {
           final idx = entry.key;
           final todo = entry.value;
+          final isHighlighted = widget.highlightedIds.contains(todo.id);
           return _TodoTile(
             todo: todo,
             index: idx,
-            onComplete: () => widget.onComplete(todo),
+            isHighlighted: isHighlighted,
+            onComplete: () => _completeTodoWithEffect(todo),
             onDelete: todo.isCustom ? () => widget.onDelete(todo) : null,
           );
         }),
@@ -184,7 +219,7 @@ class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
                 color: AppColors.card,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppColors.financial.withOpacity(0.3),
+                  color: AppColors.financial.withValues(alpha: 0.3),
                   // Dashed effect via border width trick
                 ),
               ),
@@ -194,7 +229,7 @@ class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: AppColors.financial.withOpacity(0.12),
+                      color: AppColors.financial.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.add_rounded,
@@ -213,7 +248,143 @@ class _DailyFinancialTodosState extends State<DailyFinancialTodos> {
             ),
           ).animate().fadeIn(duration: 300.ms, delay: 200.ms),
       ],
+        ),
+        // Confetti launcher at the top center
+        Positioned(
+          top: 60,
+          child: ConfettiWidget(
+            confettiController: _confettiCtrl,
+            blastDirectionality: BlastDirectionality.explosive,
+            shouldLoop: false,
+            colors: const [
+              AppColors.xpGreen,
+              AppColors.gold,
+              AppColors.financial,
+              AppColors.primary,
+              Colors.orangeAccent,
+              Colors.cyanAccent,
+            ],
+            numberOfParticles: 24,
+            gravity: 0.3,
+            emissionFrequency: 0.05,
+            maxBlastForce: 40,
+            minBlastForce: 15,
+          ),
+        ),
+      ],
     );
+  }
+}
+
+// ── Mission Progress Bar ───────────────────────────────────────────────────────
+
+class _MissionProgressBar extends StatelessWidget {
+  final int completed;
+  final int total;
+  final double progress;
+
+  const _MissionProgressBar({
+    required this.completed,
+    required this.total,
+    required this.progress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isAllDone = completed == total && total > 0;
+    final color = isAllDone ? AppColors.gold : AppColors.financial;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color.withValues(alpha: 0.12),
+            color.withValues(alpha: 0.04),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: isAllDone ? 0.5 : 0.25)),
+        boxShadow: [
+          if (isAllDone)
+            BoxShadow(
+              color: color.withValues(alpha: 0.2),
+              blurRadius: 12,
+              spreadRadius: 0,
+            ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    isAllDone ? '🏆' : '⚔️',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isAllDone ? 'SEMUA MISI SELESAI!' : 'PROGRESS MISI HARI INI',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                '$completed/$total',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Stack(
+              children: [
+                Container(
+                  height: 8,
+                  color: AppColors.cardBorder,
+                ),
+                FractionallySizedBox(
+                  widthFactor: progress.clamp(0.0, 1.0),
+                  child: Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      gradient: LinearGradient(
+                        colors: isAllDone
+                            ? [AppColors.gold, Colors.orange]
+                            : [AppColors.financial, AppColors.xpGreen],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.5),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                    .animate()
+                    .slideX(begin: -1, end: 0, duration: 600.ms, curve: Curves.easeOutCubic),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0, duration: 400.ms);
   }
 }
 
@@ -232,12 +403,12 @@ class _MotivationCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.wealthMaster.withOpacity(0.1),
-            AppColors.wealthElite.withOpacity(0.05),
+            AppColors.wealthMaster.withValues(alpha: 0.1),
+            AppColors.wealthElite.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.wealthMaster.withOpacity(0.25)),
+        border: Border.all(color: AppColors.wealthMaster.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,7 +425,7 @@ class _MotivationCard extends StatelessWidget {
                 Text(
                   'MOTIVASI HARI INI',
                   style: TextStyle(
-                    color: AppColors.wealthMaster.withOpacity(0.7),
+                    color: AppColors.wealthMaster.withValues(alpha: 0.7),
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 2,
@@ -282,19 +453,25 @@ class _MotivationCard extends StatelessWidget {
 class _TodoTile extends StatelessWidget {
   final FinancialTodo todo;
   final int index;
+  final bool isHighlighted;
   final VoidCallback onComplete;
   final VoidCallback? onDelete;
 
   const _TodoTile({
     required this.todo,
     required this.index,
+    this.isHighlighted = false,
     required this.onComplete,
     this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = todo.completed ? AppColors.xpGreen : AppColors.financial;
+    final color = todo.completed
+        ? AppColors.xpGreen
+        : isHighlighted
+            ? AppColors.gold
+            : AppColors.financial;
 
     return Dismissible(
       key: Key(todo.id),
@@ -305,7 +482,7 @@ class _TodoTile extends StatelessWidget {
         padding: const EdgeInsets.only(right: 20),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: AppColors.danger.withOpacity(0.15),
+          color: AppColors.danger.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(14),
         ),
         child: const Icon(Icons.delete_outline_rounded,
@@ -317,14 +494,28 @@ class _TodoTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: todo.completed
-              ? AppColors.xpGreen.withOpacity(0.05)
-              : AppColors.card,
+              ? AppColors.xpGreen.withValues(alpha: 0.05)
+              : isHighlighted
+                  ? AppColors.gold.withValues(alpha: 0.03)
+                  : AppColors.card,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: todo.completed
-                ? AppColors.xpGreen.withOpacity(0.3)
-                : AppColors.cardBorder,
+                ? AppColors.xpGreen.withValues(alpha: 0.3)
+                : isHighlighted
+                    ? AppColors.gold.withValues(alpha: 0.4)
+                    : AppColors.cardBorder,
+            width: isHighlighted && !todo.completed ? 1.5 : 1.0,
           ),
+          boxShadow: isHighlighted && !todo.completed
+              ? [
+                  BoxShadow(
+                    color: AppColors.gold.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
@@ -339,8 +530,11 @@ class _TodoTile extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: todo.completed ? AppColors.xpGreen : Colors.transparent,
                   border: Border.all(
-                    color:
-                        todo.completed ? AppColors.xpGreen : AppColors.textMuted,
+                    color: todo.completed
+                        ? AppColors.xpGreen
+                        : isHighlighted
+                            ? AppColors.gold.withValues(alpha: 0.7)
+                            : AppColors.textMuted,
                     width: 2,
                   ),
                 ),
@@ -361,18 +555,44 @@ class _TodoTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    todo.title,
-                    style: TextStyle(
-                      color: todo.completed
-                          ? AppColors.textMuted
-                          : AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      decoration:
-                          todo.completed ? TextDecoration.lineThrough : null,
-                      decorationColor: AppColors.textMuted,
-                    ),
+                  Row(
+                    children: [
+                      if (isHighlighted && !todo.completed) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          margin: const EdgeInsets.only(right: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.gold.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
+                          ),
+                          child: const Text(
+                            'UTAMA',
+                            style: TextStyle(
+                              color: AppColors.gold,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                      Expanded(
+                        child: Text(
+                          todo.title,
+                          style: TextStyle(
+                            color: todo.completed
+                                ? AppColors.textMuted
+                                : AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            decoration:
+                                todo.completed ? TextDecoration.lineThrough : null,
+                            decorationColor: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   if (!todo.isCustom && !todo.completed)
                     Text(
@@ -394,12 +614,12 @@ class _TodoTile extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: color.withOpacity(0.25)),
+                border: Border.all(color: color.withValues(alpha: 0.25)),
               ),
               child: Text(
-                '+${todo.points}',
+                isHighlighted ? '+${todo.points * 2}' : '+${todo.points}',
                 style: TextStyle(
                   color: color,
                   fontSize: 10,
@@ -436,7 +656,7 @@ class _AddTodoField extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.financial.withOpacity(0.4)),
+        border: Border.all(color: AppColors.financial.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
@@ -444,7 +664,7 @@ class _AddTodoField extends StatelessWidget {
             width: 26,
             height: 26,
             decoration: BoxDecoration(
-              color: AppColors.financial.withOpacity(0.15),
+              color: AppColors.financial.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.flag_outlined,

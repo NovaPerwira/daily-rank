@@ -45,45 +45,55 @@ class _HealthPageState extends State<HealthPage> {
   }
 
   Future<void> _logActivity(String type, int xp, {double? value, String? note}) async {
-    setState(() => _isLoading = true);
     final auth = context.read<AuthProvider>();
     if (auth.supabaseUser == null) return;
     final userId = auth.supabaseUser!.id;
 
-    final entry = HealthEntry(
-      id: '',
-      userId: userId,
-      type: type,
-      note: note,
-      value: value,
-      xpEarned: xp,
-      date: DateTime.now(),
-    );
-    await UserStatsService.addHealthEntry(entry);
-    final prevStats = auth.stats;
-    final newStats = await UserStatsService.updateCategoryXp(userId, 'health', xp);
-    if (newStats != null) {
-      await auth.updateStats(newStats);
-      if (prevStats != null && mounted) {
-        final prevRank = RankConfig.getRankInfo(prevStats.totalXp).name;
-        final newRankName = RankConfig.getRankInfo(newStats.totalXp).name;
-        if (prevRank != newRankName) {
-          final rankInfo = RankConfig.getRankInfo(newStats.totalXp);
-          RankUpCelebration.show(context, newRank: rankInfo.name, emoji: rankInfo.emoji, rankColor: rankInfo.color);
-        } else {
-          AchievementPopup.show(
-            context,
-            title: type == 'workout' ? 'Workout Complete! 💪' : 'Weight Logged! ⚖️',
-            description: type == 'workout' ? 'Great session!' : 'Tracking is the first step!',
-            xpReward: xp,
-          );
+    setState(() => _isLoading = true);
+
+    try {
+      final entry = HealthEntry(
+        id: '',
+        userId: userId,
+        type: type,
+        note: note,
+        value: value,
+        xpEarned: xp,
+        date: DateTime.now(),
+      );
+      await UserStatsService.addHealthEntry(entry);
+      final prevStats = auth.stats;
+      final newStats = await UserStatsService.updateCategoryXp(userId, 'health', xp);
+      if (newStats != null) {
+        await auth.updateStats(newStats);
+        if (prevStats != null && mounted) {
+          final prevRank = RankConfig.getRankInfo(prevStats.totalXp).name;
+          final newRankName = RankConfig.getRankInfo(newStats.totalXp).name;
+          if (prevRank != newRankName) {
+            final rankInfo = RankConfig.getRankInfo(newStats.totalXp);
+            RankUpCelebration.show(context, newRank: rankInfo.name, emoji: rankInfo.emoji, rankColor: rankInfo.color);
+          } else {
+            AchievementPopup.show(
+              context,
+              title: type == 'workout' ? 'Workout Complete! 💪' : 'Weight Logged! ⚖️',
+              description: type == 'workout' ? 'Great session!' : 'Tracking is the first step!',
+              xpReward: xp,
+            );
+          }
         }
       }
+      _weightCtrl.clear();
+      _noteCtrl.clear();
+      await _loadEntries();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    _weightCtrl.clear();
-    _noteCtrl.clear();
-    await _loadEntries();
-    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
@@ -108,7 +118,7 @@ class _HealthPageState extends State<HealthPage> {
               decoration: BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.health.withOpacity(0.3)),
+                border: Border.all(color: AppColors.health.withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
@@ -157,10 +167,10 @@ class _HealthPageState extends State<HealthPage> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [AppColors.health.withOpacity(0.2), AppColors.card],
+                    colors: [AppColors.health.withValues(alpha: 0.2), AppColors.card],
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.health.withOpacity(0.4)),
+                  border: Border.all(color: AppColors.health.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   children: [
@@ -177,9 +187,9 @@ class _HealthPageState extends State<HealthPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AppColors.xpGreen.withOpacity(0.15),
+                        color: AppColors.xpGreen.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.xpGreen.withOpacity(0.4)),
+                        border: Border.all(color: AppColors.xpGreen.withValues(alpha: 0.4)),
                       ),
                       child: Text('+${RankConfig.workoutXp} XP', style: const TextStyle(color: AppColors.xpGreen, fontWeight: FontWeight.w700)),
                     ),
@@ -196,7 +206,7 @@ class _HealthPageState extends State<HealthPage> {
               decoration: BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.info.withOpacity(0.3)),
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

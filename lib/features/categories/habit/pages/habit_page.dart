@@ -20,7 +20,7 @@ class HabitPage extends StatefulWidget {
 class _HabitPageState extends State<HabitPage> {
   List<QuestModel> _quests = [];
   bool _loading = true;
-  int _streakDays = 0;
+  final int _streakDays = 0;
 
   @override
   void initState() {
@@ -108,7 +108,7 @@ class _HabitPageState extends State<HabitPage> {
               decoration: BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.habit.withOpacity(0.3)),
+                border: Border.all(color: AppColors.habit.withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
@@ -181,9 +181,9 @@ class _HabitPageState extends State<HabitPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.08),
+                color: AppColors.warning.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,10 +232,10 @@ class _QuestCard extends StatelessWidget {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: quest.completed ? AppColors.xpGreen.withOpacity(0.4) : AppColors.cardBorder,
+          color: quest.completed ? AppColors.xpGreen.withValues(alpha: 0.4) : AppColors.cardBorder,
         ),
         boxShadow: quest.completed
-            ? [BoxShadow(color: AppColors.xpGreen.withOpacity(0.1), blurRadius: 8)]
+            ? [BoxShadow(color: AppColors.xpGreen.withValues(alpha: 0.1), blurRadius: 8)]
             : [],
       ),
       child: ListTile(
@@ -272,7 +272,7 @@ class _QuestCard extends StatelessWidget {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: AppColors.xpGreen.withOpacity(quest.completed ? 0.05 : 0.12),
+            color: AppColors.xpGreen.withValues(alpha: quest.completed ? 0.05 : 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(

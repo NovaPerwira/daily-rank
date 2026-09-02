@@ -8,14 +8,22 @@ import 'package:life_rank/core/constants/financial_rank_config.dart';
 // Financial Rank Card — ML-style premium gamification UI
 // ══════════════════════════════════════════════════════════════════════════════
 
+import 'savings_chart_widget.dart';
+
 class FinancialRankCard extends StatefulWidget {
   final double netWorthIdr;
+  final double displayNetWorthIdr;
   final VoidCallback? onTapEdit;
+  final List<Map<String, dynamic>> monthlySavings;
+  final VoidCallback? onTapChart;
 
   const FinancialRankCard({
     super.key,
     required this.netWorthIdr,
+    required this.displayNetWorthIdr,
     this.onTapEdit,
+    required this.monthlySavings,
+    this.onTapChart,
   });
 
   @override
@@ -71,7 +79,7 @@ class _FinancialRankCardState extends State<FinancialRankCard>
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -102,6 +110,23 @@ class _FinancialRankCardState extends State<FinancialRankCard>
                   _buildNetWorthDisplay(_progress),
                   const SizedBox(height: 20),
                   _buildProgressSection(_progress),
+
+                  // ── Embedded Savings Chart ──
+                  if (widget.monthlySavings.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    const Divider(color: Colors.white24, height: 1),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: widget.onTapChart,
+                      behavior: HitTestBehavior.opaque,
+                      child: SavingsChartWidget(
+                        monthlySavings: widget.monthlySavings,
+                        barColor: rank.primaryColor,
+                        isCompact: true,
+                        showBackground: false,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -127,7 +152,7 @@ class _FinancialRankCardState extends State<FinancialRankCard>
               colors: [
                 const Color(0xFF1A0030),
                 const Color(0xFF0D001A),
-                rank.primaryColor.withOpacity(0.25),
+                rank.primaryColor.withValues(alpha: 0.25),
               ],
               stops: const [0.0, 0.5, 1.0],
             ),
@@ -143,9 +168,9 @@ class _FinancialRankCardState extends State<FinancialRankCard>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              rank.primaryColor.withOpacity(0.20),
+              rank.primaryColor.withValues(alpha: 0.20),
               AppColors.card,
-              AppColors.card.withOpacity(0.98),
+              AppColors.card.withValues(alpha: 0.98),
             ],
             stops: const [0.0, 0.45, 1.0],
           ),
@@ -202,9 +227,9 @@ class _FinancialRankCardState extends State<FinancialRankCard>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: rank.primaryColor.withOpacity(0.12),
+                color: rank.primaryColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: rank.primaryColor.withOpacity(0.3)),
+                border: Border.all(color: rank.primaryColor.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -244,7 +269,7 @@ class _FinancialRankCardState extends State<FinancialRankCard>
               Text(
                 rank.tierName.toUpperCase(),
                 style: TextStyle(
-                  color: rank.primaryColor.withOpacity(0.7),
+                  color: rank.primaryColor.withValues(alpha: 0.7),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 2.5,
@@ -271,13 +296,17 @@ class _FinancialRankCardState extends State<FinancialRankCard>
                 Row(
                   children: [
                     Icon(Icons.arrow_upward_rounded,
-                        color: rank.primaryColor.withOpacity(0.6), size: 12),
+                        color: rank.primaryColor.withValues(alpha: 0.6), size: 12),
                     const SizedBox(width: 4),
-                    Text(
-                      'Next: ${_progress.nextRank!.displayName}',
-                      style: TextStyle(
-                        color: AppColors.textSecondary.withOpacity(0.7),
-                        fontSize: 11,
+                    Flexible(
+                      child: Text(
+                        'Next: ${_progress.nextRank!.displayName}',
+                        style: TextStyle(
+                          color: AppColors.textSecondary.withValues(alpha: 0.7),
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],
@@ -332,7 +361,7 @@ class _FinancialRankCardState extends State<FinancialRankCard>
         Text(
           'Bintang ${p.star}/5',
           style: TextStyle(
-            color: AppColors.textSecondary.withOpacity(0.6),
+            color: AppColors.textSecondary.withValues(alpha: 0.6),
             fontSize: 11,
           ),
         ),
@@ -363,12 +392,11 @@ class _FinancialRankCardState extends State<FinancialRankCard>
   // ── Net worth display ───────────────────────────────────────────────────────
 
   Widget _buildNetWorthDisplay(RankProgress p) {
-    final usdStr = FinancialRankCalculator.formatUsdFull(p.currentAmount);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Net Worth',
+          'My Wealth',
           style: TextStyle(
             color: AppColors.textSecondary.withValues(alpha: 0.6),
             fontSize: 11,
@@ -378,7 +406,7 @@ class _FinancialRankCardState extends State<FinancialRankCard>
         const SizedBox(height: 4),
         // IDR — primary display
         Text(
-          FinancialRankCalculator.formatIdrFull(p.currentAmount),
+          FinancialRankCalculator.formatIdrFull(widget.displayNetWorthIdr),
           style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 26,
@@ -392,7 +420,7 @@ class _FinancialRankCardState extends State<FinancialRankCard>
         const SizedBox(height: 2),
         // USD — auto conversion display
         Text(
-          usdStr,
+          FinancialRankCalculator.formatUsdFull(widget.displayNetWorthIdr),
           style: TextStyle(
             color: AppColors.textSecondary.withValues(alpha: 0.55),
             fontSize: 13,
@@ -420,9 +448,9 @@ class _FinancialRankCardState extends State<FinancialRankCard>
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: p.rank.primaryColor.withOpacity(0.1),
+          color: p.rank.primaryColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: p.rank.primaryColor.withOpacity(0.3)),
+          border: Border.all(color: p.rank.primaryColor.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -458,7 +486,7 @@ class _FinancialRankCardState extends State<FinancialRankCard>
             Text(
               '${p.rank.displayName} ⭐${p.star} → ⭐${p.star < 5 ? p.star + 1 : "MAX"}',
               style: TextStyle(
-                color: AppColors.textSecondary.withOpacity(0.8),
+                color: AppColors.textSecondary.withValues(alpha: 0.8),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -513,7 +541,7 @@ class _FinancialRankCardState extends State<FinancialRankCard>
             Text(
               rankEnd,
               style: TextStyle(
-                color: AppColors.textSecondary.withOpacity(0.7),
+                color: AppColors.textSecondary.withValues(alpha: 0.7),
                 fontSize: 10,
               ),
             ),
@@ -564,7 +592,7 @@ class _StarWidget extends StatelessWidget {
             painter: _PartialStarPainter(
               progress: progress,
               fillColor: starColor,
-              emptyColor: AppColors.textMuted.withOpacity(0.3),
+              emptyColor: AppColors.textMuted.withValues(alpha: 0.3),
               glowColor: glowColor,
             ),
           ),
@@ -583,7 +611,7 @@ class _StarWidget extends StatelessWidget {
         ),
       )
           .animate(onPlay: (c) => c.repeat(reverse: true))
-          .shimmer(duration: 2000.ms, color: starColor.withOpacity(0.5))
+          .shimmer(duration: 2000.ms, color: starColor.withValues(alpha: 0.5))
           .then()
           .custom(
             duration: 0.ms,
@@ -593,7 +621,7 @@ class _StarWidget extends StatelessWidget {
 
     return Icon(
       Icons.star_outline_rounded,
-      color: AppColors.textMuted.withOpacity(0.35),
+      color: AppColors.textMuted.withValues(alpha: 0.35),
       size: 32,
     );
   }
@@ -603,7 +631,7 @@ class _StarWidget extends StatelessWidget {
 // Rank Badge Widget
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _RankBadge extends StatelessWidget {
+class _RankBadge extends StatefulWidget {
   final FinancialSubRank rank;
   final bool isMythic;
   final AnimationController shimmer;
@@ -615,43 +643,177 @@ class _RankBadge extends StatelessWidget {
   });
 
   @override
+  State<_RankBadge> createState() => _RankBadgeState();
+}
+
+class _RankBadgeState extends State<_RankBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: shimmer,
+      animation: Listenable.merge([widget.shimmer, _pulseCtrl]),
       builder: (_, __) {
-        return Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                rank.primaryColor.withOpacity(isMythic ? 0.6 : 0.35),
-                rank.primaryColor.withOpacity(0.08),
-              ],
-            ),
-            border: Border.all(
-              color: rank.primaryColor.withOpacity(isMythic ? 0.9 : 0.55),
-              width: isMythic ? 2.5 : 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: rank.glowColor,
-                blurRadius: isMythic ? 28 : 18,
-                spreadRadius: isMythic ? 4 : 2,
+        final glowRadius = widget.isMythic
+            ? 20.0 + _pulseCtrl.value * 14.0
+            : 12.0 + _pulseCtrl.value * 8.0;
+        return SizedBox(
+          width: widget.isMythic ? 90 : 80,
+          height: widget.isMythic ? 90 : 80,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Outer glow pulse ring
+              if (widget.isMythic)
+                Container(
+                  width: 90 + _pulseCtrl.value * 6,
+                  height: 90 + _pulseCtrl.value * 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.rank.glowColor,
+                        blurRadius: glowRadius,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              // Hex badge
+              CustomPaint(
+                size: Size(
+                  widget.isMythic ? 90 : 80,
+                  widget.isMythic ? 90 : 80,
+                ),
+                painter: _HexRankBadgePainter(
+                  color: widget.rank.primaryColor,
+                  glowColor: widget.rank.glowColor,
+                  glowRadius: glowRadius,
+                  isMythic: widget.isMythic,
+                ),
+                child: Center(
+                  child: Text(
+                    widget.rank.iconAsset,
+                    style: TextStyle(
+                      fontSize: widget.isMythic ? 38 : 34,
+                    ),
+                  ),
+                ),
               ),
             ],
-          ),
-          child: Center(
-            child: Text(
-              rank.iconAsset,
-              style: TextStyle(fontSize: isMythic ? 36 : 32),
-            ),
           ),
         );
       },
     );
   }
+}
+
+class _HexRankBadgePainter extends CustomPainter {
+  final Color color;
+  final Color glowColor;
+  final double glowRadius;
+  final bool isMythic;
+
+  _HexRankBadgePainter({
+    required this.color,
+    required this.glowColor,
+    required this.glowRadius,
+    required this.isMythic,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = math.min(cx, cy) - 5;
+
+    final path = _hexPath(cx, cy, r);
+
+    // Outer glow
+    final glowPaint = Paint()
+      ..color = glowColor.withValues(alpha: isMythic ? 0.65 : 0.45)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowRadius);
+    canvas.drawPath(path, glowPaint);
+
+    // BG fill
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final bgPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: isMythic
+            ? [
+                const Color(0xFF1A0030),
+                color.withValues(alpha: 0.3),
+              ]
+            : [
+                color.withValues(alpha: 0.30),
+                color.withValues(alpha: 0.07),
+              ],
+      ).createShader(rect);
+    canvas.drawPath(path, bgPaint);
+
+    // Border
+    final borderPaint = Paint()
+      ..color = color.withValues(alpha: isMythic ? 0.9 : 0.65)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = isMythic ? 2.5 : 2.0;
+    canvas.drawPath(path, borderPaint);
+
+    // Inner hex highlight
+    final innerPath = _hexPath(cx, cy, r * 0.80);
+    final highlightPaint = Paint()
+      ..color = color.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawPath(innerPath, highlightPaint);
+
+    // Corner stars (Mythic only)
+    if (isMythic) {
+      final starPaint = Paint()
+        ..color = color.withValues(alpha: 0.6)
+        ..style = PaintingStyle.fill;
+      for (int i = 0; i < 6; i++) {
+        final angle = (math.pi / 3) * i - math.pi / 6;
+        final sx = cx + (r + 5) * math.cos(angle);
+        final sy = cy + (r + 5) * math.sin(angle);
+        canvas.drawCircle(Offset(sx, sy), 2.5, starPaint);
+      }
+    }
+  }
+
+  Path _hexPath(double cx, double cy, double r) {
+    final path = Path();
+    for (int i = 0; i < 6; i++) {
+      final angle = (math.pi / 180) * (60 * i - 30);
+      final x = cx + r * math.cos(angle);
+      final y = cy + r * math.sin(angle);
+      if (i == 0) path.moveTo(x, y);
+      else path.lineTo(x, y);
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldRepaint(covariant _HexRankBadgePainter old) =>
+      old.glowRadius != glowRadius;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -714,7 +876,7 @@ class _ProgressBarState extends State<_ProgressBar>
       builder: (_, __) => Container(
         height: widget.height,
         decoration: BoxDecoration(
-          color: AppColors.textMuted.withOpacity(0.15),
+          color: AppColors.textMuted.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(widget.height),
         ),
         child: FractionallySizedBox(
@@ -725,7 +887,7 @@ class _ProgressBarState extends State<_ProgressBar>
               borderRadius: BorderRadius.circular(widget.height),
               gradient: LinearGradient(
                 colors: [
-                  widget.color.withOpacity(0.8),
+                  widget.color.withValues(alpha: 0.8),
                   widget.color,
                 ],
               ),
@@ -828,8 +990,8 @@ class _ShimmerPainter extends CustomPainter {
       end: Alignment.bottomRight,
       colors: [
         Colors.transparent,
-        const Color(0xFFFF2E9B).withOpacity(0.06),
-        const Color(0xFFFFD700).withOpacity(0.08),
+        const Color(0xFFFF2E9B).withValues(alpha: 0.06),
+        const Color(0xFFFFD700).withValues(alpha: 0.08),
         Colors.transparent,
       ],
       stops: const [0.0, 0.4, 0.6, 1.0],
@@ -860,9 +1022,9 @@ class FinancialRankChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: rank.primaryColor.withOpacity(0.12),
+        color: rank.primaryColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: rank.primaryColor.withOpacity(0.4)),
+        border: Border.all(color: rank.primaryColor.withValues(alpha: 0.4)),
         boxShadow: [
           BoxShadow(color: rank.glowColor, blurRadius: 8, spreadRadius: 0),
         ],

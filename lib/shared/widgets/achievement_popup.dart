@@ -105,9 +105,9 @@ class AchievementPopup extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.xpGreen.withOpacity(0.15),
+                  color: AppColors.xpGreen.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppColors.xpGreen.withOpacity(0.5)),
+                  border: Border.all(color: AppColors.xpGreen.withValues(alpha: 0.5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -215,7 +215,7 @@ class RankUpCelebration extends StatelessWidget {
                   border: Border.all(color: rankColor, width: 2.5),
                   boxShadow: [
                     BoxShadow(
-                      color: rankColor.withOpacity(0.4),
+                      color: rankColor.withValues(alpha: 0.4),
                       blurRadius: 40,
                       spreadRadius: 8,
                     ),
@@ -254,7 +254,7 @@ class RankUpCelebration extends StatelessWidget {
                         letterSpacing: 3,
                         shadows: [
                           Shadow(
-                            color: rankColor.withOpacity(0.5),
+                            color: rankColor.withValues(alpha: 0.5),
                             blurRadius: 10,
                           ),
                         ],

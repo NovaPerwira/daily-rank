@@ -46,8 +46,8 @@ class _SplashPageState extends State<SplashPage> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withOpacity(0.4),
-                    AppColors.primary.withOpacity(0.1),
+                    AppColors.primary.withValues(alpha: 0.4),
+                    AppColors.primary.withValues(alpha: 0.1),
                   ],
                 ),
                 border: Border.all(color: AppColors.primary, width: 2),
@@ -99,7 +99,7 @@ class _SplashPageState extends State<SplashPage> {
             Text(
               'Gamify Your Life',
               style: TextStyle(
-                color: AppColors.primary.withOpacity(0.8),
+                color: AppColors.primary.withValues(alpha: 0.8),
                 fontSize: 16,
                 letterSpacing: 3,
                 fontWeight: FontWeight.w500,

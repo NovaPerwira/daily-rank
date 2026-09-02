@@ -12,6 +12,7 @@ import '../../features/categories/habit/pages/habit_page.dart';
 import '../../features/categories/knowledge/pages/knowledge_page.dart';
 import '../../features/categories/health/pages/health_page.dart';
 import '../../features/profile/pages/profile_page.dart';
+import '../../features/cashflow/pages/cashflow_page.dart';
 import '../constants/app_colors.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -48,7 +49,7 @@ GoRouter createRouter(BuildContext context) {
       // Shell route with bottom nav
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
-        builder: (ctx, state, child) => AppShell(child: child, state: state),
+        builder: (ctx, state, child) => AppShell(state: state, child: child),
         routes: [
           GoRoute(
             path: '/dashboard',
@@ -78,6 +79,10 @@ GoRouter createRouter(BuildContext context) {
             path: '/profile',
             builder: (ctx, state) => const ProfilePage(),
           ),
+          GoRoute(
+            path: '/cashflow',
+            builder: (ctx, state) => const CashflowPage(),
+          ),
         ],
       ),
     ],
@@ -96,7 +101,9 @@ class AppShell extends StatelessWidget {
         location.startsWith('/career') ||
         location.startsWith('/habit') ||
         location.startsWith('/knowledge') ||
-        location.startsWith('/health')) return 1;
+        location.startsWith('/health')) {
+      return 1;
+    }
     if (location.startsWith('/profile')) return 2;
     return 0;
   }
@@ -211,7 +218,7 @@ class _NavItem extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+          color: isActive ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -261,7 +268,7 @@ class _CategoryMenuItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [

@@ -79,14 +79,14 @@ class WealthProgressCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            rank.color.withOpacity(0.18),
+            rank.color.withValues(alpha: 0.18),
             AppColors.card,
-            AppColors.card.withOpacity(0.95),
+            AppColors.card.withValues(alpha: 0.95),
           ],
           stops: const [0.0, 0.5, 1.0],
         ),
         border: Border.all(
-          color: rank.color.withOpacity(0.45),
+          color: rank.color.withValues(alpha: 0.45),
           width: 1.5,
         ),
         boxShadow: [
@@ -97,7 +97,7 @@ class WealthProgressCard extends StatelessWidget {
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 16,
             spreadRadius: 0,
             offset: const Offset(0, 4),
@@ -152,7 +152,7 @@ class WealthProgressCard extends StatelessWidget {
                     Text(
                       'Net Worth',
                       style: TextStyle(
-                        color: AppColors.textSecondary.withOpacity(0.7),
+                        color: AppColors.textSecondary.withValues(alpha: 0.7),
                         fontSize: 12,
                         letterSpacing: 0.5,
                       ),
@@ -233,7 +233,7 @@ class WealthProgressCard extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   Colors.transparent,
-                  rank.color.withOpacity(0.3),
+                  rank.color.withValues(alpha: 0.3),
                   Colors.transparent,
                 ],
               ),
@@ -317,7 +317,7 @@ class _AnimatedProgressBar extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(6),
                 gradient: LinearGradient(
-                  colors: [color.withOpacity(0.7), color],
+                  colors: [color.withValues(alpha: 0.7), color],
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -382,7 +382,7 @@ class _MetricChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: AppColors.textSecondary.withOpacity(0.6),
+              color: AppColors.textSecondary.withValues(alpha: 0.6),
               fontSize: 9,
               fontWeight: FontWeight.w600,
               letterSpacing: 1,

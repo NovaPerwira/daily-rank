@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/constants/app_theme.dart';
 import 'core/services/supabase_service.dart';
 import 'core/router/app_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'features/auth/providers/auth_provider.dart';
 
 void main() async {
@@ -26,6 +27,9 @@ void main() async {
 
   // Initialize Supabase
   await SupabaseService.initialize();
+
+  // Initialize DateFormatting for id_ID
+  await initializeDateFormatting('id_ID', null);
 
   runApp(const LifeRankApp());
 }

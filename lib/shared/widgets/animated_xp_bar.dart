@@ -77,13 +77,13 @@ class AnimatedXpBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(height),
                     gradient: LinearGradient(
                       colors: [
-                        color.withOpacity(0.8),
+                        color.withValues(alpha: 0.8),
                         color,
                       ],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.5),
+                        color: color.withValues(alpha: 0.5),
                         blurRadius: 6,
                         spreadRadius: 0,
                       ),

@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   type      TEXT NOT NULL CHECK (type IN ('income', 'expense', 'saving', 'investment')),
   amount    BIGINT NOT NULL CHECK (amount >= 0),   -- dalam IDR (rupiah)
   category  TEXT,                                  -- contoh: 'Gaji Pokok', 'Dana Darurat'
+  income_type TEXT DEFAULT 'fixed',                -- 'fixed' atau 'side'
   note      TEXT,
   date      DATE DEFAULT CURRENT_DATE NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL

@@ -90,6 +90,8 @@ class TransactionModel {
   final double amount;
   final String? category;
   final DateTime date;
+  /// For income transactions: 'fixed' (gaji tetap) or 'side' (pendapatan sampingan)
+  final String? incomeType;
 
   const TransactionModel({
     required this.id,
@@ -98,6 +100,7 @@ class TransactionModel {
     required this.amount,
     this.category,
     required this.date,
+    this.incomeType,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -108,6 +111,7 @@ class TransactionModel {
       amount: (json['amount'] as num).toDouble(),
       category: json['category'] as String?,
       date: DateTime.parse(json['date'] as String),
+      incomeType: json['income_type'] as String?,
     );
   }
 
@@ -115,9 +119,21 @@ class TransactionModel {
     return {
       'user_id': userId,
       'type': type,
-      'amount': amount,
+      'amount': amount.round(), // BIGINT in DB — must be integer
       'category': category,
       'date': date.toIso8601String().split('T')[0],
+      if (incomeType != null) 'income_type': incomeType,
+    };
+  }
+
+  /// Used for UPDATE (excludes user_id, includes all editable fields)
+  Map<String, dynamic> toUpdateJson() {
+    return {
+      'type': type,
+      'amount': amount.round(), // BIGINT in DB — must be integer
+      'category': category,
+      'date': date.toIso8601String().split('T')[0],
+      'income_type': incomeType, // always send, null is valid
     };
   }
 }
@@ -267,14 +283,14 @@ class NetWorthEntry {
       amountIdr: (json['amount_idr'] as num).toDouble(),
       label: json['label'] as String?,
       source: json['source'] as String? ?? 'manual',
-      wealthRank: json['wealth_rank'] as String? ?? 'Warrior III',
+      wealthRank: json['wealth_rank'] as String? ?? 'Beginner',
       recordedAt: DateTime.parse(json['recorded_at'] as String),
     );
   }
 
+  /// Used for INSERT — excludes 'id' so Supabase uses gen_random_uuid()
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'user_id': userId,
       'amount_idr': amountIdr.round(),
       'label': label,

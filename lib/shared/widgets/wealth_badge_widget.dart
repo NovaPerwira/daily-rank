@@ -50,7 +50,7 @@ class WealthBadgeWidget extends StatelessWidget {
           .animate(onPlay: (c) => c.repeat(reverse: true))
           .shimmer(
             duration: 2500.ms,
-            color: rank.color.withOpacity(0.4),
+            color: rank.color.withValues(alpha: 0.4),
           )
           .then()
           .shimmer(duration: 1000.ms, delay: 1500.ms);
@@ -66,9 +66,9 @@ class WealthBadgeWidget extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
           decoration: BoxDecoration(
-            color: rank.color.withOpacity(0.15),
+            color: rank.color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: rank.color.withOpacity(0.5)),
+            border: Border.all(color: rank.color.withValues(alpha: 0.5)),
           ),
           child: Text(
             rank.name.toUpperCase(),
@@ -84,7 +84,7 @@ class WealthBadgeWidget extends StatelessWidget {
         Text(
           rank.subtitle,
           style: TextStyle(
-            color: rank.color.withOpacity(0.65),
+            color: rank.color.withValues(alpha: 0.65),
             fontSize: labelSize - 1,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.5,
@@ -119,8 +119,8 @@ class _HexBadge extends StatelessWidget {
           center: Alignment.topLeft,
           radius: 1.2,
           colors: [
-            color.withOpacity(0.35),
-            color.withOpacity(0.08),
+            color.withValues(alpha: 0.35),
+            color.withValues(alpha: 0.08),
           ],
         ),
         border: Border.all(color: color, width: 2.5),
@@ -131,7 +131,7 @@ class _HexBadge extends StatelessWidget {
             spreadRadius: 4,
           ),
           BoxShadow(
-            color: color.withOpacity(0.15),
+            color: color.withValues(alpha: 0.15),
             blurRadius: 8,
             spreadRadius: 0,
           ),

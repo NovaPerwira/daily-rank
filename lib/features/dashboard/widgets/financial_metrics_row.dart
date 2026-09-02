@@ -14,75 +14,78 @@ class FinancialMetricsRow extends StatelessWidget {
     required this.currencyMode,
   });
 
-  double get _monthlyIncome {
+  double get _monthlyFixedIncomeUsd {
     final now = DateTime.now();
     final idr = transactions
-        .where((t) => t.type == 'income' && t.date.month == now.month && t.date.year == now.year)
+        .where((t) =>
+            t.type == 'income' &&
+            (t.incomeType == 'fixed' || t.incomeType == null) &&
+            t.date.month == now.month &&
+            t.date.year == now.year)
         .fold(0.0, (sum, t) => sum + t.amount);
     return idr / WealthConfig.usdToIdr;
   }
 
-  double get _monthlyExpense {
+  double get _monthlySideIncomeUsd {
     final now = DateTime.now();
     final idr = transactions
-        .where((t) => t.type == 'expense' && t.date.month == now.month && t.date.year == now.year)
+        .where((t) =>
+            t.type == 'income' &&
+            t.incomeType == 'side' &&
+            t.date.month == now.month &&
+            t.date.year == now.year)
         .fold(0.0, (sum, t) => sum + t.amount);
     return idr / WealthConfig.usdToIdr;
   }
 
-  double get _totalSavingUsd {
-    final idr = transactions
-        .where((t) => t.type == 'saving')
-        .fold(0.0, (sum, t) => sum + t.amount);
-    return idr / WealthConfig.usdToIdr;
-  }
-
-  double get _totalInvestmentUsd {
-    final idr = transactions
-        .where((t) => t.type == 'investment')
-        .fold(0.0, (sum, t) => sum + t.amount);
-    return idr / WealthConfig.usdToIdr;
-  }
-
-  double get _savingRatePct {
+  double get _monthlyTotalIncomeUsd {
     final now = DateTime.now();
-    final income = transactions
-        .where((t) => t.type == 'income' && t.date.month == now.month && t.date.year == now.year)
+    final idr = transactions
+        .where((t) =>
+            t.type == 'income' &&
+            t.date.month == now.month &&
+            t.date.year == now.year)
         .fold(0.0, (sum, t) => sum + t.amount);
-    final saving = transactions
-        .where((t) => t.type == 'saving' && t.date.month == now.month && t.date.year == now.year)
+    return idr / WealthConfig.usdToIdr;
+  }
+
+  double get _monthlyExpenseUsd {
+    final now = DateTime.now();
+    final idr = transactions
+        .where((t) =>
+            t.type == 'expense' &&
+            t.date.month == now.month &&
+            t.date.year == now.year)
         .fold(0.0, (sum, t) => sum + t.amount);
-    if (income <= 0) return 0;
-    return (saving / income * 100).clamp(0, 100);
+    return idr / WealthConfig.usdToIdr;
   }
 
   @override
   Widget build(BuildContext context) {
-    final incomeStr = WealthConfig.formatAmountCompact(_monthlyIncome, currencyMode);
-    final expenseStr = WealthConfig.formatAmountCompact(_monthlyExpense, currencyMode);
-    final savingStr = WealthConfig.formatAmountCompact(_totalSavingUsd, currencyMode);
-    final investStr = WealthConfig.formatAmountCompact(_totalInvestmentUsd, currencyMode);
-    final savingPct = _savingRatePct;
+    final fixedStr = WealthConfig.formatAmountCompact(_monthlyFixedIncomeUsd, currencyMode);
+    final sideStr = WealthConfig.formatAmountCompact(_monthlySideIncomeUsd, currencyMode);
+    final totalStr = WealthConfig.formatAmountCompact(_monthlyTotalIncomeUsd, currencyMode);
+    final expenseStr = WealthConfig.formatAmountCompact(_monthlyExpenseUsd, currencyMode);
 
     return Column(
       children: [
         Row(
           children: [
             _MetricTile(
-              label: 'Income',
-              value: incomeStr,
-              sublabel: 'this month',
-              icon: Icons.arrow_downward_rounded,
+              label: 'Pendapatan Tetap',
+              value: fixedStr,
+              sublabel: 'gaji bulan ini',
+              icon: Icons.work_rounded,
               color: AppColors.xpGreen,
               index: 0,
             ),
             const SizedBox(width: 12),
             _MetricTile(
-              label: 'Saving Rate',
-              value: '${savingPct.toStringAsFixed(0)}%',
-              sublabel: savingStr,
-              icon: Icons.savings_outlined,
-              color: _savingRateColor(savingPct),
+              label: 'Pendapatan Sampingan',
+              value: sideStr,
+              sublabel: 'freelance / bisnis',
+              icon: Icons.flash_on_rounded,
+              color: AppColors.gold,
               index: 1,
             ),
           ],
@@ -91,18 +94,18 @@ class FinancialMetricsRow extends StatelessWidget {
         Row(
           children: [
             _MetricTile(
-              label: 'Portfolio',
-              value: investStr,
-              sublabel: 'total invested',
-              icon: Icons.show_chart_rounded,
-              color: AppColors.wealthBuilder,
+              label: 'Total Pemasukan',
+              value: totalStr,
+              sublabel: 'bulan ini',
+              icon: Icons.arrow_downward_rounded,
+              color: AppColors.financial,
               index: 2,
             ),
             const SizedBox(width: 12),
             _MetricTile(
-              label: 'Expenses',
+              label: 'Pengeluaran',
               value: expenseStr,
-              sublabel: 'this month',
+              sublabel: 'bulan ini',
               icon: Icons.arrow_upward_rounded,
               color: AppColors.danger,
               index: 3,
@@ -111,12 +114,6 @@ class FinancialMetricsRow extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Color _savingRateColor(double rate) {
-    if (rate >= 30) return AppColors.xpGreen;
-    if (rate >= 15) return AppColors.warning;
-    return AppColors.danger;
   }
 }
 
@@ -145,10 +142,10 @@ class _MetricTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.06),
+              color: color.withValues(alpha: 0.07),
               blurRadius: 12,
               spreadRadius: 0,
             ),
@@ -163,8 +160,11 @@ class _MetricTile extends StatelessWidget {
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
+                    gradient: LinearGradient(
+                      colors: [color.withValues(alpha: 0.20), color.withValues(alpha: 0.06)],
+                    ),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
                   ),
                   child: Icon(icon, color: color, size: 16),
                 ),
@@ -173,27 +173,37 @@ class _MetricTile extends StatelessWidget {
                   label.toUpperCase(),
                   style: TextStyle(
                     color: AppColors.textMuted,
-                    fontSize: 9,
+                    fontSize: 8,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.0,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Text(
-              value,
-              style: TextStyle(
-                color: color,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-              ),
+            // Animated count-up value
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: Duration(milliseconds: 600 + 100 * index),
+              curve: Curves.easeOutCubic,
+              builder: (_, t, __) {
+                return Text(
+                  value,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 2),
             Text(
               sublabel,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 11,
               ),
@@ -203,7 +213,9 @@ class _MetricTile extends StatelessWidget {
       )
           .animate(delay: Duration(milliseconds: 80 * index))
           .fadeIn(duration: 500.ms)
-          .slideY(begin: 0.2, end: 0, duration: 500.ms, curve: Curves.easeOutCubic),
+          .slideY(begin: 0.2, end: 0, duration: 500.ms, curve: Curves.easeOutCubic)
+          .then()
+          .shimmer(duration: 600.ms, color: color.withValues(alpha: 0.15)),
     );
   }
 }
