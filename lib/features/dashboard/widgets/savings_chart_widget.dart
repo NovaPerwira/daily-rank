@@ -36,7 +36,10 @@ class _SavingsChartWidgetState extends State<SavingsChartWidget>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-    _anim = CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic);
+    _anim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _animController.forward();
     });
@@ -49,7 +52,8 @@ class _SavingsChartWidgetState extends State<SavingsChartWidget>
   }
 
   String _formatCompact(double amount) {
-    if (amount >= 1000000000) return '${(amount / 1000000000).toStringAsFixed(1)}M';
+    if (amount >= 1000000000)
+      return '${(amount / 1000000000).toStringAsFixed(1)}M';
     if (amount >= 1000000) return '${(amount / 1000000).toStringAsFixed(0)}Jt';
     if (amount >= 1000) return '${(amount / 1000).toStringAsFixed(0)}Rb';
     return amount.toStringAsFixed(0);
@@ -71,191 +75,233 @@ class _SavingsChartWidgetState extends State<SavingsChartWidget>
     final iconBoxSize = isCompact ? 24.0 : 32.0;
 
     return Container(
-      padding: EdgeInsets.all(widget.showBackground ? paddingVal : 0.0),
-      decoration: widget.showBackground
-          ? BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: widget.barColor.withValues(alpha: 0.2)),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.barColor.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  spreadRadius: 0,
-                ),
-              ],
-            )
-          : null,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
+          padding: EdgeInsets.all(widget.showBackground ? paddingVal : 0.0),
+          decoration: widget.showBackground
+              ? BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: widget.barColor.withValues(alpha: 0.2),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.barColor.withValues(alpha: 0.06),
+                      blurRadius: 16,
+                      spreadRadius: 0,
+                    ),
+                  ],
+                )
+              : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: iconBoxSize,
-                height: iconBoxSize,
-                decoration: BoxDecoration(
-                  color: widget.barColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(isCompact ? 6 : 10),
-                ),
-                child: Icon(Icons.bar_chart_rounded, color: widget.barColor, size: iconSize),
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: iconBoxSize,
+                    height: iconBoxSize,
+                    decoration: BoxDecoration(
+                      color: widget.barColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(isCompact ? 6 : 10),
+                    ),
+                    child: Icon(
+                      Icons.bar_chart_rounded,
+                      color: widget.barColor,
+                      size: iconSize,
+                    ),
+                  ),
+                  SizedBox(width: isCompact ? 6 : 10),
+                  Text(
+                    isCompact ? 'TABUNGAN' : 'GRAFIK TABUNGAN',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: isCompact ? 0.8 : 1.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (isCompact)
+                    Icon(
+                      Icons.zoom_out_map_rounded,
+                      color: widget.barColor.withValues(alpha: 0.7),
+                      size: 12,
+                    )
+                  else
+                    Text(
+                      '6 Bulan Terakhir',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
               ),
-              SizedBox(width: isCompact ? 6 : 10),
-              Text(
-                isCompact ? 'TABUNGAN' : 'GRAFIK TABUNGAN',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: titleFontSize,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: isCompact ? 0.8 : 1.5,
-                ),
-              ),
-              const Spacer(),
-              if (isCompact)
-                Icon(Icons.zoom_out_map_rounded, color: widget.barColor.withValues(alpha: 0.7), size: 12)
-              else
+
+              SizedBox(height: isCompact ? 10 : 20),
+
+              // Total saving label
+              if (maxAmount > 0) ...[
                 Text(
-                  '6 Bulan Terakhir',
+                  isCompact
+                      ? 'Rp ${_formatCompact(data.fold<double>(0, (s, e) => s + (e['amount'] as double)))}'
+                      : 'Total: Rp ${_formatCompact(data.fold<double>(0, (s, e) => s + (e['amount'] as double)))}',
                   style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    color: widget.barColor,
+                    fontSize: isCompact ? 11 : 13,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-            ],
-          ),
+                SizedBox(height: isCompact ? 6 : 12),
+              ],
 
-          SizedBox(height: isCompact ? 10 : 20),
+              // Chart area
+              SizedBox(
+                height: chartHeight,
+                child: AnimatedBuilder(
+                  animation: _anim,
+                  builder: (_, _) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: List.generate(data.length, (i) {
+                        final entry = data[i];
+                        final amount = entry['amount'] as double;
+                        final month = entry['month'] as DateTime;
+                        final isCurrentMonth = i == data.length - 1;
 
-          // Total saving label
-          if (maxAmount > 0) ...[
-            Text(
-              isCompact 
-                  ? 'Rp ${_formatCompact(data.fold<double>(0, (s, e) => s + (e['amount'] as double)))}'
-                  : 'Total: Rp ${_formatCompact(data.fold<double>(0, (s, e) => s + (e['amount'] as double)))}',
-              style: TextStyle(
-                color: widget.barColor,
-                fontSize: isCompact ? 11 : 13,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(height: isCompact ? 6 : 12),
-          ],
+                        final fraction = maxAmount > 0
+                            ? (amount / maxAmount)
+                            : 0.0;
+                        final animFraction = fraction * _anim.value;
 
-          // Chart area
-          SizedBox(
-            height: chartHeight,
-            child: AnimatedBuilder(
-              animation: _anim,
-              builder: (_, __) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: List.generate(data.length, (i) {
-                    final entry = data[i];
-                    final amount = entry['amount'] as double;
-                    final month = entry['month'] as DateTime;
-                    final isCurrentMonth = i == data.length - 1;
-
-                    final fraction = maxAmount > 0 ? (amount / maxAmount) : 0.0;
-                    final animFraction = fraction * _anim.value;
-
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            // Amount label (only if > 0 and not compact)
-                            if (amount > 0 && !isCompact)
-                              Text(
-                                _formatCompact(amount),
-                                style: TextStyle(
-                                  color: isCurrentMonth
-                                      ? widget.barColor
-                                      : AppColors.textMuted,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                // Amount label (only if > 0 and not compact)
+                                if (amount > 0 && !isCompact)
+                                  Text(
+                                    _formatCompact(amount),
+                                    style: TextStyle(
+                                      color: isCurrentMonth
+                                          ? widget.barColor
+                                          : AppColors.textMuted,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                const SizedBox(height: 2),
+                                // Bar
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 50),
+                                  height: math.max(
+                                    3,
+                                    animFraction * (isCompact ? 45 : 100),
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: amount > 0
+                                        ? LinearGradient(
+                                            begin: Alignment.bottomCenter,
+                                            end: Alignment.topCenter,
+                                            colors: [
+                                              widget.barColor.withValues(
+                                                alpha: isCurrentMonth
+                                                    ? 1.0
+                                                    : 0.45,
+                                              ),
+                                              widget.barColor.withValues(
+                                                alpha: isCurrentMonth
+                                                    ? 0.7
+                                                    : 0.25,
+                                              ),
+                                            ],
+                                          )
+                                        : null,
+                                    color: amount == 0
+                                        ? AppColors.cardBorder.withValues(
+                                            alpha: 0.4,
+                                          )
+                                        : null,
+                                    borderRadius: BorderRadius.circular(6),
+                                    boxShadow: isCurrentMonth && amount > 0
+                                        ? [
+                                            BoxShadow(
+                                              color: widget.barColor.withValues(
+                                                alpha: 0.4,
+                                              ),
+                                              blurRadius: 8,
+                                              spreadRadius: 0,
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
                                 ),
-                                textAlign: TextAlign.center,
-                              ),
-                            const SizedBox(height: 2),
-                            // Bar
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 50),
-                              height: math.max(3, animFraction * (isCompact ? 45 : 100)),
-                              decoration: BoxDecoration(
-                                gradient: amount > 0
-                                    ? LinearGradient(
-                                        begin: Alignment.bottomCenter,
-                                        end: Alignment.topCenter,
-                                        colors: [
-                                          widget.barColor.withValues(alpha: 
-                                              isCurrentMonth ? 1.0 : 0.45),
-                                          widget.barColor.withValues(alpha: 
-                                              isCurrentMonth ? 0.7 : 0.25),
-                                        ],
-                                      )
-                                    : null,
-                                color: amount == 0
-                                    ? AppColors.cardBorder.withValues(alpha: 0.4)
-                                    : null,
-                                borderRadius: BorderRadius.circular(6),
-                                boxShadow: isCurrentMonth && amount > 0
-                                    ? [
-                                        BoxShadow(
-                                          color: widget.barColor.withValues(alpha: 0.4),
-                                          blurRadius: 8,
-                                          spreadRadius: 0,
-                                        ),
-                                      ]
-                                    : null,
-                              ),
+                                const SizedBox(height: 6),
+                                // Month label
+                                Text(
+                                  () {
+                                    const shortMonths = [
+                                      'Jan',
+                                      'Feb',
+                                      'Mar',
+                                      'Apr',
+                                      'Mei',
+                                      'Jun',
+                                      'Jul',
+                                      'Agt',
+                                      'Sep',
+                                      'Okt',
+                                      'Nov',
+                                      'Des',
+                                    ];
+                                    return shortMonths[month.month - 1];
+                                  }(),
+                                  style: TextStyle(
+                                    color: isCurrentMonth
+                                        ? widget.barColor
+                                        : AppColors.textMuted,
+                                    fontSize: isCompact ? 8.0 : 10.0,
+                                    fontWeight: isCurrentMonth
+                                        ? FontWeight.w800
+                                        : FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 6),
-                            // Month label
-                            Text(
-                              () {
-                                const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
-                                return shortMonths[month.month - 1];
-                              }(),
-                              style: TextStyle(
-                                color: isCurrentMonth
-                                    ? widget.barColor
-                                    : AppColors.textMuted,
-                                fontSize: isCompact ? 8.0 : 10.0,
-                                fontWeight: isCurrentMonth
-                                    ? FontWeight.w800
-                                    : FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      }),
                     );
-                  }),
-                );
-              },
-            ),
-          ),
-
-          // Empty state
-          if (maxAmount == 0) ...[
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                'Belum ada data tabungan',
-                style: TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 12,
+                  },
                 ),
               ),
-            ),
-          ],
-        ],
-      ),
-    ).animate().fadeIn(duration: 500.ms, delay: 300.ms)
-        .slideY(begin: 0.15, end: 0, duration: 500.ms, curve: Curves.easeOutCubic);
+
+              // Empty state
+              if (maxAmount == 0) ...[
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    'Belum ada data tabungan',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        )
+        .animate()
+        .fadeIn(duration: 500.ms, delay: 300.ms)
+        .slideY(
+          begin: 0.15,
+          end: 0,
+          duration: 500.ms,
+          curve: Curves.easeOutCubic,
+        );
   }
 }

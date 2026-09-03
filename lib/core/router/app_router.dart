@@ -13,6 +13,9 @@ import '../../features/categories/knowledge/pages/knowledge_page.dart';
 import '../../features/categories/health/pages/health_page.dart';
 import '../../features/profile/pages/profile_page.dart';
 import '../../features/cashflow/pages/cashflow_page.dart';
+import '../../features/cashflow/pages/add_transaction_page.dart';
+import '../../features/quests/pages/quests_page.dart';
+import '../../features/stats/pages/stats_page.dart';
 import '../constants/app_colors.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -56,6 +59,14 @@ GoRouter createRouter(BuildContext context) {
             builder: (ctx, state) => const DashboardPage(),
           ),
           GoRoute(
+            path: '/quests',
+            builder: (ctx, state) => const QuestsPage(),
+          ),
+          GoRoute(
+            path: '/stats',
+            builder: (ctx, state) => const StatsPage(),
+          ),
+          GoRoute(
             path: '/financial',
             builder: (ctx, state) => const FinancialPage(),
           ),
@@ -83,6 +94,10 @@ GoRouter createRouter(BuildContext context) {
             path: '/cashflow',
             builder: (ctx, state) => const CashflowPage(),
           ),
+          GoRoute(
+            path: '/add-transaction',
+            builder: (ctx, state) => const AddTransactionPage(),
+          ),
         ],
       ),
     ],
@@ -97,14 +112,17 @@ class AppShell extends StatelessWidget {
 
   int _getSelectedIndex(String location) {
     if (location.startsWith('/dashboard')) return 0;
-    if (location.startsWith('/financial') ||
+    if (location.startsWith('/quests')) return 1;
+    // index 2 = center "+" button, not a tab
+    if (location.startsWith('/stats') ||
+        location.startsWith('/financial') ||
         location.startsWith('/career') ||
         location.startsWith('/habit') ||
         location.startsWith('/knowledge') ||
         location.startsWith('/health')) {
-      return 1;
+      return 3;
     }
-    if (location.startsWith('/profile')) return 2;
+    if (location.startsWith('/profile')) return 4;
     return 0;
   }
 
@@ -123,7 +141,7 @@ class AppShell extends StatelessWidget {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -135,17 +153,53 @@ class AppShell extends StatelessWidget {
                   onTap: () => context.go('/dashboard'),
                 ),
                 _NavItem(
-                  icon: Icons.grid_view_outlined,
-                  activeIcon: Icons.grid_view,
-                  label: 'Categories',
+                  icon: Icons.assignment_outlined,
+                  activeIcon: Icons.assignment,
+                  label: 'Quests',
                   isActive: selectedIndex == 1,
-                  onTap: () => _showCategoryMenu(context),
+                  onTap: () => context.go('/quests'),
+                ),
+                // ── Center FAB-style "+" button ──────────────────────
+                GestureDetector(
+                  onTap: () => context.push('/add-transaction'),
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.financial],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                          offset: const Offset(0, -2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
+                _NavItem(
+                  icon: Icons.insights_outlined,
+                  activeIcon: Icons.insights,
+                  label: 'Stats',
+                  isActive: selectedIndex == 3,
+                  onTap: () => context.go('/stats'),
                 ),
                 _NavItem(
                   icon: Icons.person_outline,
                   activeIcon: Icons.person,
                   label: 'Profile',
-                  isActive: selectedIndex == 2,
+                  isActive: selectedIndex == 4,
                   onTap: () => context.go('/profile'),
                 ),
               ],

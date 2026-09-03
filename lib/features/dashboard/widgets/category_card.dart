@@ -56,178 +56,193 @@ class _SupportAttributeCardState extends State<SupportAttributeCard>
     final progress = RankConfig.getProgressToNextRank(widget.xp);
 
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) {
-        setState(() => _isPressed = false);
-        context.push(widget.route);
-      },
-      onTapCancel: () => setState(() => _isPressed = false),
-      child: AnimatedBuilder(
-        animation: _glowCtrl,
-        builder: (_, child) {
-          final glowOpacity = _isPressed
-              ? 0.6
-              : 0.04 + _glowCtrl.value * 0.06;
-          final borderOpacity = _isPressed
-              ? 0.8
-              : 0.2 + _glowCtrl.value * 0.15;
-          final scale = _isPressed ? 0.96 : 1.0;
+          onTapDown: (_) => setState(() => _isPressed = true),
+          onTapUp: (_) {
+            setState(() => _isPressed = false);
+            context.push(widget.route);
+          },
+          onTapCancel: () => setState(() => _isPressed = false),
+          child: AnimatedBuilder(
+            animation: _glowCtrl,
+            builder: (_, child) {
+              final glowOpacity = _isPressed
+                  ? 0.6
+                  : 0.04 + _glowCtrl.value * 0.06;
+              final borderOpacity = _isPressed
+                  ? 0.8
+                  : 0.2 + _glowCtrl.value * 0.15;
+              final scale = _isPressed ? 0.96 : 1.0;
 
-          return AnimatedScale(
-            scale: scale,
-            duration: const Duration(milliseconds: 120),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: widget.color.withValues(alpha: borderOpacity), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.color.withValues(alpha: glowOpacity),
-                    blurRadius: _isPressed ? 20 : 10 + _glowCtrl.value * 8,
-                    spreadRadius: _isPressed ? 2 : 0,
-                  ),
-                ],
-              ),
-              child: child,
-            ),
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top: icon + title + arrow
-            Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
+              return AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 120),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: widget.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: widget.color.withValues(alpha: 0.35)),
-                  ),
-                  child: Center(
-                    child: Text(widget.emoji, style: const TextStyle(fontSize: 16)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.rpgLabel,
-                        style: TextStyle(
-                          color: widget.color,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        widget.title,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: widget.color.withValues(alpha: borderOpacity),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.color.withValues(alpha: glowOpacity),
+                        blurRadius: _isPressed ? 20 : 10 + _glowCtrl.value * 8,
+                        spreadRadius: _isPressed ? 2 : 0,
                       ),
                     ],
                   ),
+                  child: child,
                 ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: widget.color.withValues(alpha: 0.5),
-                  size: 16,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-
-            // Rank name + XP
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              );
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${rankInfo.emoji} ${rankInfo.name}',
-                  style: TextStyle(
-                    color: rankInfo.color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                // Animated XP counter
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: widget.xp.toDouble()),
-                  duration: Duration(milliseconds: 800 + widget.index * 100),
-                  curve: Curves.easeOutCubic,
-                  builder: (_, value, __) => Text(
-                    '${value.toInt()} XP',
-                    style: TextStyle(
-                      color: widget.color.withValues(alpha: 0.8),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 6),
-
-            // Mini progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: Stack(
-                children: [
-                  Container(
-                    height: 4,
-                    width: double.infinity,
-                    color: AppColors.cardBorder,
-                  ),
-                  FractionallySizedBox(
-                    widthFactor: progress.clamp(0.02, 1.0),
-                    child: Container(
-                      height: 4,
+                // Top: icon + title + arrow
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(3),
-                        gradient: LinearGradient(
-                          colors: [
-                            widget.color.withValues(alpha: 0.8),
-                            widget.color,
-                          ],
+                        color: widget.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: widget.color.withValues(alpha: 0.35),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: widget.color.withValues(alpha: 0.5),
-                            blurRadius: 4,
+                      ),
+                      child: Center(
+                        child: Text(
+                          widget.emoji,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.rpgLabel,
+                            style: TextStyle(
+                              color: widget.color,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            widget.title,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  )
-                      .animate()
-                      .slideX(
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: widget.color.withValues(alpha: 0.5),
+                      size: 16,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                // Rank name + XP
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${rankInfo.emoji} ${rankInfo.name}',
+                      style: TextStyle(
+                        color: rankInfo.color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    // Animated XP counter
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: widget.xp.toDouble()),
+                      duration: Duration(
+                        milliseconds: 800 + widget.index * 100,
+                      ),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, value, _) => Text(
+                        '${value.toInt()} XP',
+                        style: TextStyle(
+                          color: widget.color.withValues(alpha: 0.8),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 6),
+
+                // Mini progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: Stack(
+                    children: [
+                      Container(
+                        height: 4,
+                        width: double.infinity,
+                        color: AppColors.cardBorder,
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: progress.clamp(0.02, 1.0),
+                        child: Container(
+                          height: 4,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(3),
+                            gradient: LinearGradient(
+                              colors: [
+                                widget.color.withValues(alpha: 0.8),
+                                widget.color,
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: widget.color.withValues(alpha: 0.5),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ).animate().slideX(
                         begin: -1,
                         end: 0,
-                        duration: Duration(milliseconds: 700 + widget.index * 80),
+                        duration: Duration(
+                          milliseconds: 700 + widget.index * 80,
+                        ),
                         curve: Curves.easeOutCubic,
                       ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    )
+          ),
+        )
         .animate(delay: Duration(milliseconds: 80 * widget.index))
         .fadeIn(duration: 500.ms)
-        .slideY(begin: 0.25, end: 0, duration: 500.ms, curve: Curves.easeOutCubic);
+        .slideY(
+          begin: 0.25,
+          end: 0,
+          duration: 500.ms,
+          curve: Curves.easeOutCubic,
+        );
   }
 }
 

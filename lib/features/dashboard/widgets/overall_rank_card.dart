@@ -11,6 +11,7 @@ import 'package:life_rank/core/constants/app_colors.dart';
 import 'package:life_rank/core/constants/wealth_config.dart';
 import 'package:life_rank/core/constants/financial_rank_config.dart';
 import 'package:life_rank/core/models/user_models.dart';
+import 'package:life_rank/core/models/category_models.dart';
 import 'package:life_rank/core/services/user_stats_service.dart';
 import 'package:life_rank/features/auth/providers/auth_provider.dart';
 
@@ -26,6 +27,8 @@ class UserProfileHeader extends StatefulWidget {
   final double netWorthIdr;
   final int streakCount;
   final String? userId;
+  final List<TransactionModel>? transactions;
+  final double financialHpPercentage;
 
   const UserProfileHeader({
     super.key,
@@ -37,6 +40,8 @@ class UserProfileHeader extends StatefulWidget {
     required this.netWorthIdr,
     this.streakCount = 0,
     this.userId,
+    this.transactions,
+    this.financialHpPercentage = 1.0,
   });
 
   @override
@@ -65,6 +70,49 @@ class _UserProfileHeaderState extends State<UserProfileHeader>
     )..repeat(reverse: true);
   }
 
+  List<TransactionModel>? _memoizedTxs;
+  double? _memoizedHp;
+  List<dynamic>? _cachedTitle;
+
+  List<dynamic> _getUserTitle() {
+    if (_cachedTitle != null && _memoizedTxs == widget.transactions && _memoizedHp == widget.financialHpPercentage) {
+      return _cachedTitle!;
+    }
+    _memoizedTxs = widget.transactions;
+    _memoizedHp = widget.financialHpPercentage;
+    _cachedTitle = _calculateUserTitle(widget.transactions ?? [], widget.financialHpPercentage);
+    return _cachedTitle!;
+  }
+
+  List<dynamic> _calculateUserTitle(List<TransactionModel> transactions, double hpPercentage) {
+    if (hpPercentage <= 0) return ['🧟', 'Zombie Kere-aktif', Colors.grey];
+    
+    double totalExpense = 0;
+    double foodExpense = 0;
+    double debtExpense = 0;
+    double totalIncome = 0;
+    
+    for (var tx in transactions) {
+      if (tx.type == 'income') {
+        totalIncome += tx.amount;
+      } else if (tx.type == 'expense') {
+        totalExpense += tx.amount;
+        final cat = (tx.category ?? '').toLowerCase();
+        if (cat.contains('makan') || cat.contains('food')) foodExpense += tx.amount;
+        if (cat.contains('cicilan') || cat.contains('paylater') || cat.contains('kredit') || cat.contains('tagihan')) debtExpense += tx.amount;
+      }
+    }
+    
+    if (totalExpense > 0) {
+      if (foodExpense / totalExpense > 0.4) return ['🍔', 'Lambung Sultan', Colors.orange];
+      if (debtExpense / totalExpense > 0.3) return ['💳', 'Si Paling Paylater', Colors.redAccent];
+    }
+    
+    if (totalIncome > 0 && totalExpense < totalIncome * 0.5) return ['🧘', 'Suhu Frugal', Colors.teal];
+    
+    return ['🧑‍💼', 'Warga Biasa', AppColors.textSecondary];
+  }
+
   @override
   void dispose() {
     _ringCtrl.dispose();
@@ -75,7 +123,10 @@ class _UserProfileHeaderState extends State<UserProfileHeader>
   Future<void> _pickAndUploadAvatar() async {
     if (widget.userId == null) return;
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (picked == null || !mounted) return;
 
     setState(() => _isUploading = true);
@@ -111,249 +162,310 @@ class _UserProfileHeaderState extends State<UserProfileHeader>
         : widget.username.toUpperCase();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            mlRank.primaryColor.withValues(alpha: 0.12),
-            AppColors.card,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: mlRank.primaryColor.withValues(alpha: 0.35)),
-        boxShadow: [
-          BoxShadow(
-            color: mlRank.glowColor,
-            blurRadius: 20,
-            spreadRadius: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                mlRank.primaryColor.withValues(alpha: 0.12),
+                AppColors.card,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: mlRank.primaryColor.withValues(alpha: 0.35),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: mlRank.glowColor,
+                blurRadius: 20,
+                spreadRadius: 0,
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // ── Animated Avatar with Rank Ring ────────────────────────────────
-          GestureDetector(
-            onTap: _pickAndUploadAvatar,
-            child: SizedBox(
-              width: 64,
-              height: 64,
-              child: Stack(
-                alignment: Alignment.center,
+          child: Row(
+            children: [
+              // ── Animated Avatar with Rank Ring & Badge ────────────────────────────────
+              Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Rotating rank ring
-                  AnimatedBuilder(
-                    animation: _ringCtrl,
-                    builder: (_, __) => CustomPaint(
-                      size: const Size(64, 64),
-                      painter: _RankRingPainter(
-                        color: mlRank.primaryColor,
-                        progress: _ringCtrl.value,
-                        glowColor: mlRank.glowColor,
-                      ),
-                    ),
-                  ),
-
-                  // Pulse ring
-                  AnimatedBuilder(
-                    animation: _pulseCtrl,
-                    builder: (_, __) => Container(
-                      width: 54 + _pulseCtrl.value * 4,
-                      height: 54 + _pulseCtrl.value * 4,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: mlRank.primaryColor.withValues(alpha: 0.15 + _pulseCtrl.value * 0.1),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Avatar circle
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          mlRank.primaryColor.withValues(alpha: 0.85),
-                          mlRank.primaryColor.withValues(alpha: 0.35),
-                        ],
-                      ),
-                      border: Border.all(
-                        color: mlRank.primaryColor.withValues(alpha: 0.7),
-                        width: 2.5,
-                      ),
-                    ),
-                    child: ClipOval(
-                      child: _buildAvatarContent(initials),
-                    ),
-                  ),
-
-                  // Upload indicator
-                  if (_isUploading)
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.black.withValues(alpha: 0.6),
-                      ),
-                      child: const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                  GestureDetector(
+                    onTap: _pickAndUploadAvatar,
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Rotating rank ring
+                      AnimatedBuilder(
+                        animation: _ringCtrl,
+                        builder: (_, _) => CustomPaint(
+                          size: const Size(64, 64),
+                          painter: _RankRingPainter(
+                            color: mlRank.primaryColor,
+                            progress: _ringCtrl.value,
+                            glowColor: mlRank.glowColor,
                           ),
                         ),
                       ),
-                    ),
 
-                  // Camera edit icon
-                  if (!_isUploading)
-                    Positioned(
-                      bottom: 2,
-                      right: 2,
-                      child: Container(
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: mlRank.primaryColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.background, width: 1.5),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: Colors.white,
-                          size: 10,
+                      // Pulse ring
+                      AnimatedBuilder(
+                        animation: _pulseCtrl,
+                        builder: (_, _) => Container(
+                          width: 54 + _pulseCtrl.value * 4,
+                          height: 54 + _pulseCtrl.value * 4,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: mlRank.primaryColor.withValues(
+                                alpha: 0.15 + _pulseCtrl.value * 0.1,
+                              ),
+                              width: 1,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                ],
+
+                      // Avatar circle
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              mlRank.primaryColor.withValues(alpha: 0.85),
+                              mlRank.primaryColor.withValues(alpha: 0.35),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: mlRank.primaryColor.withValues(alpha: 0.7),
+                            width: 2.5,
+                          ),
+                        ),
+                        child: ClipOval(child: _buildAvatarContent(initials)),
+                      ),
+
+                      // Upload indicator
+                      if (_isUploading)
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.6),
+                          ),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Camera edit icon
+                      if (!_isUploading)
+                        Positioned(
+                          bottom: 2,
+                          right: 2,
+                          child: Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: mlRank.primaryColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.background,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 10,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
+              // Dynamic Title Badge
+              Builder(
+                builder: (context) {
+                  final titleData = _getUserTitle();
+                  final String emoji = titleData[0];
+                  final String title = titleData[1];
+                  final Color color = titleData[2];
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: color.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(emoji, style: const TextStyle(fontSize: 10)),
+                        const SizedBox(width: 4),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
 
           const SizedBox(width: 14),
 
-          // ── Name + ML RANK ────────────────────────────────────────────────
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              // ── Name + ML RANK ────────────────────────────────────────────────
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.username,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (widget.streakCount > 0) ...[
-                      const SizedBox(width: 8),
-                      _StreakBadge(count: widget.streakCount, color: mlRank.primaryColor),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            mlRank.primaryColor.withValues(alpha: 0.25),
-                            mlRank.primaryColor.withValues(alpha: 0.10),
-                          ],
+                    Row(
+                      children: [
+                        Text(
+                          widget.username,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: mlRank.primaryColor.withValues(alpha: 0.5)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: mlRank.glowColor,
-                            blurRadius: 6,
+                        if (widget.streakCount > 0) ...[
+                          const SizedBox(width: 8),
+                          _StreakBadge(
+                            count: widget.streakCount,
+                            color: mlRank.primaryColor,
                           ),
                         ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(mlRank.iconAsset,
-                              style: const TextStyle(fontSize: 10)),
-                          const SizedBox(width: 4),
-                          Text(
-                            mlRank.displayName,
-                            style: TextStyle(
-                              color: mlRank.primaryColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                mlRank.primaryColor.withValues(alpha: 0.25),
+                                mlRank.primaryColor.withValues(alpha: 0.10),
+                              ],
                             ),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: mlRank.primaryColor.withValues(alpha: 0.5),
+                            ),
+                            boxShadow: [
+                              BoxShadow(color: mlRank.glowColor, blurRadius: 6),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          ...List.generate(
-                              rankProgress.star,
-                              (_) => Text('★',
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                mlRank.iconAsset,
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                mlRank.displayName,
+                                style: TextStyle(
+                                  color: mlRank.primaryColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              ...List.generate(
+                                rankProgress.star,
+                                (_) => Text(
+                                  '★',
                                   style: TextStyle(
-                                      color: mlRank.starColor, fontSize: 8))),
-                        ],
-                      ),
+                                    color: mlRank.starColor,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // ── Currency toggle ────────────────────────────────────────────────
-          GestureDetector(
-            onTap: widget.onCurrencyToggle,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.cardBorder),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _CurrencyPill(
-                    label: 'USD',
-                    active: widget.currencyMode == CurrencyMode.usd,
-                    color: mlRank.primaryColor,
+
+              const SizedBox(width: 8),
+
+              // ── Currency toggle ────────────────────────────────────────────────
+              GestureDetector(
+                onTap: widget.onCurrencyToggle,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
                   ),
-                  const SizedBox(width: 2),
-                  _CurrencyPill(
-                    label: 'IDR',
-                    active: widget.currencyMode == CurrencyMode.idr,
-                    color: mlRank.primaryColor,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.cardBorder),
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _CurrencyPill(
+                        label: 'USD',
+                        active: widget.currencyMode == CurrencyMode.usd,
+                        color: mlRank.primaryColor,
+                      ),
+                      const SizedBox(width: 2),
+                      _CurrencyPill(
+                        label: 'IDR',
+                        active: widget.currencyMode == CurrencyMode.idr,
+                        color: mlRank.primaryColor,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    )
+        )
         .animate()
         .fadeIn(duration: 600.ms)
         .slideY(
-            begin: -0.1, end: 0, duration: 600.ms, curve: Curves.easeOutCubic);
+          begin: -0.1,
+          end: 0,
+          duration: 600.ms,
+          curve: Curves.easeOutCubic,
+        );
   }
 
   Widget _buildAvatarContent(String initials) {
@@ -374,8 +486,8 @@ class _UserProfileHeaderState extends State<UserProfileHeader>
       return CachedNetworkImage(
         imageUrl: cacheBustedUrl,
         fit: BoxFit.cover,
-        placeholder: (_, __) => _initialsWidget(initials),
-        errorWidget: (_, __, ___) => _initialsWidget(initials),
+        placeholder: (_, _) => _initialsWidget(initials),
+        errorWidget: (_, _, _) => _initialsWidget(initials),
       );
     }
     return _initialsWidget(initials);
@@ -464,41 +576,44 @@ class _StreakBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.deepOrange.withValues(alpha: 0.25),
-            Colors.orange.withValues(alpha: 0.15),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withValues(alpha: 0.2),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('🔥', style: TextStyle(fontSize: 10)),
-          const SizedBox(width: 3),
-          Text(
-            'x$count',
-            style: const TextStyle(
-              color: Colors.orangeAccent,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.deepOrange.withValues(alpha: 0.25),
+                Colors.orange.withValues(alpha: 0.15),
+              ],
             ),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withValues(alpha: 0.2),
+                blurRadius: 8,
+              ),
+            ],
           ),
-        ],
-      ),
-    )
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🔥', style: TextStyle(fontSize: 10)),
+              const SizedBox(width: 3),
+              Text(
+                'x$count',
+                style: const TextStyle(
+                  color: Colors.orangeAccent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        )
         .animate(onPlay: (controller) => controller.repeat(reverse: true))
-        .shimmer(duration: 1200.ms, color: Colors.orange.withValues(alpha: 0.3));
+        .shimmer(
+          duration: 1200.ms,
+          color: Colors.orange.withValues(alpha: 0.3),
+        );
   }
 }
 

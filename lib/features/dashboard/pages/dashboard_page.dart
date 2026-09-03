@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -9,13 +8,14 @@ import 'package:life_rank/core/constants/wealth_config.dart';
 import 'package:life_rank/core/models/category_models.dart';
 import 'package:life_rank/core/services/user_stats_service.dart';
 import '../widgets/overall_rank_card.dart';
-import '../widgets/category_card.dart';
 import '../widgets/financial_rank_card.dart';
-import '../widgets/financial_metrics_row.dart';
-import '../widgets/daily_financial_todos.dart';
 import '../widgets/savings_chart_widget.dart';
-import '../widgets/monthly_streak_widget.dart';
 import '../widgets/net_worth_sheet.dart';
+import '../widgets/zombie_mode_wrapper.dart';
+import '../widgets/safe_zone_banner.dart';
+import '../widgets/financial_hp_bar.dart';
+import '../../cashflow/providers/gacha_provider.dart';
+import '../widgets/gacha_modal.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -28,14 +28,13 @@ class _DashboardPageState extends State<DashboardPage> {
   List<TransactionModel> _transactions = [];
   CurrencyMode _currencyMode = CurrencyMode.idr;
 
-  /// Daily financial todos
-  List<FinancialTodo> _todos = [];
-
   /// Monthly savings history for chart
   List<Map<String, dynamic>> _monthlySavings = [];
 
   /// Days with activity this month for streak
   Set<int> _activeDays = {};
+
+  bool _isSimulatePayday = false;
 
   @override
   void initState() {
@@ -51,17 +50,15 @@ class _DashboardPageState extends State<DashboardPage> {
     final userId = auth.supabaseUser!.id;
 
     final txs = await UserStatsService.getTransactions(userId);
-    final td = await UserStatsService.getTodayFinancialTodos(userId);
-    final savings = await UserStatsService.getMonthlySavingsHistory(userId, preloadedTxs: txs);
+    final mSavings = await UserStatsService.getMonthlySavingsHistory(userId, preloadedTxs: txs);
     final active = await UserStatsService.getMonthlyActivedays(userId, preloadedTxs: txs);
-
     if (mounted) {
       setState(() {
         _transactions = txs;
-        _todos = td;
-        _monthlySavings = savings;
+        _monthlySavings = mSavings;
         _activeDays = active;
       });
+      context.read<GachaProvider>().checkStreakAndAwardTicket(active.length);
     }
   }
 
@@ -92,7 +89,25 @@ class _DashboardPageState extends State<DashboardPage> {
     return income - expense + investmentExpense;
   }
 
-
+  /// HP Financial Health: (Income - PureExpense) / Income
+  double get _financialHpPercentage {
+    double income = 0;
+    double pureExpense = 0;
+    for (final t in _transactions) {
+      if (t.type == 'income') {
+        income += t.amount;
+      } else if (t.type == 'expense') {
+        final cat = t.category?.toLowerCase() ?? '';
+        final isAsset = cat.contains('investasi') || cat.contains('tabungan') || cat.contains('dana darurat');
+        if (!isAsset) {
+          pureExpense += t.amount;
+        }
+      }
+    }
+    if (income == 0) return pureExpense > 0 ? 0.0 : 1.0;
+    double hp = (income - pureExpense) / income;
+    return hp.clamp(0.0, 1.0);
+  }
 
   void _showSnack(String msg) {
     if (!mounted) return;
@@ -147,64 +162,15 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Future<void> _completeTodo(FinancialTodo todo) async {
-    final auth = context.read<AuthProvider>();
-    final userId = auth.supabaseUser?.id;
-    if (userId == null) return;
-
-    // Deterministic seed based on date to check if it's highlighted today
-    final now = DateTime.now();
-    final dateSeed = now.year * 10000 + now.month * 100 + now.day;
-    final random = math.Random(dateSeed);
-
-    final presets = _todos.where((t) => !t.isCustom).toList();
-    final shuffledPresets = List<FinancialTodo>.from(presets)..shuffle(random);
-    final highlightedIds = shuffledPresets.take(2).map((t) => t.id).toSet();
-
-    final isHighlighted = highlightedIds.contains(todo.id);
-    final finalPoints = isHighlighted ? todo.points * 2 : todo.points;
-
-    await UserStatsService.completeFinancialTodo(todo.id);
-    await UserStatsService.updateCategoryXp(userId, 'financial', finalPoints);
-    await auth.refreshStats();
-
-    setState(() {
-      final idx = _todos.indexWhere((t) => t.id == todo.id);
-      if (idx != -1) _todos[idx].completed = true;
-    });
-    _showSnack('${todo.icon} +$finalPoints pts — Kerja bagus! 🔥${isHighlighted ? " (Misi Utama 2x XP)" : ""}');
-  }
-
-  Future<void> _deleteTodo(FinancialTodo todo) async {
-    await UserStatsService.deleteFinancialTodo(todo.id);
-    setState(() => _todos.removeWhere((t) => t.id == todo.id));
-  }
-
-  Future<void> _addCustomTodo(String title) async {
-    final auth = context.read<AuthProvider>();
-    final userId = auth.supabaseUser?.id;
-    if (userId == null) return;
-
-    final newTodo = FinancialTodo(
-      id: '',
-      userId: userId,
-      title: title,
-      desc: '',
-      icon: '🎯',
-      points: 50,
-      isCustom: true,
-    );
-
-    await UserStatsService.addCustomFinancialTodo(newTodo);
-    final updated = await UserStatsService.getTodayFinancialTodos(userId);
-    if (mounted) setState(() => _todos = updated);
-  }
+  // Note: Todos and Boss Battles logic moved to QuestsPage
+  // Note: Stats and Metrics logic moved to StatsPage
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final stats = auth.stats;
     final profile = auth.profile;
+    final gachaProvider = context.watch<GachaProvider>();
 
     if (stats == null || profile == null) {
       return const Scaffold(
@@ -217,236 +183,179 @@ class _DashboardPageState extends State<DashboardPage> {
 
     final streakCount = _activeDays.length;
 
-    // Date-based deterministic randomizer for daily presets
-    final now = DateTime.now();
-    final dateSeed = now.year * 10000 + now.month * 100 + now.day;
-    final random = math.Random(dateSeed);
-
-    final presets = _todos.where((t) => !t.isCustom).toList();
-    final customs = _todos.where((t) => t.isCustom).toList();
-
-    // Shuffle preset daily todos deterministically based on date
-    final shuffledPresets = List<FinancialTodo>.from(presets)..shuffle(random);
-    final highlightedIds = shuffledPresets.take(2).map((t) => t.id).toSet();
-
-    // Recombine (presets first in shuffled order, then customs)
-    final displayedTodos = [...shuffledPresets, ...customs];
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await auth.refreshStats();
-          await _loadInitialData();
-        },
-        color: AppColors.financial,
-        backgroundColor: AppColors.card,
-        child: CustomScrollView(
-          slivers: [
-            // ── App Bar ────────────────────────────────────────────────────
-            SliverAppBar(
-              floating: true,
-              snap: true,
-              backgroundColor: AppColors.background,
-              expandedHeight: 56,
-              titleSpacing: 20,
-              title: Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [AppColors.financial, AppColors.xpGreen],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.financial.withValues(alpha: 0.4),
-                          blurRadius: 10,
-                          spreadRadius: 1,
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: () async {
+              await auth.refreshStats();
+              await _loadInitialData();
+            },
+            color: AppColors.financial,
+            backgroundColor: AppColors.card,
+            child: ZombieModeWrapper(
+              isZombie: _rankNetWorthIdr <= 0,
+              child: CustomScrollView(
+                slivers: [
+                  // ── App Bar ────────────────────────────────────────────────────
+                  SliverAppBar(
+                    expandedHeight: 0,
+                    toolbarHeight: 60,
+                    floating: true,
+                    pinned: true,
+                    backgroundColor: AppColors.background.withValues(alpha: 0.9),
+                    elevation: 0,
+                    actions: [
+                      IconButton(
+                        tooltip: 'Simulasi Payday (Safe Zone)',
+                        icon: Icon(
+                          _isSimulatePayday ? Icons.shield_rounded : Icons.shield_outlined,
+                          color: _isSimulatePayday ? Colors.amberAccent : AppColors.textSecondary,
+                          size: 22,
                         ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Text('S',
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900)),
-                    ),
+                        onPressed: () {
+                          setState(() {
+                            _isSimulatePayday = !_isSimulatePayday;
+                          });
+                          if (_isSimulatePayday) {
+                            _showSnack('Safe Zone Diaktifkan! Uang kebal hukuman.');
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.inventory_2_rounded, color: AppColors.xpGreen, size: 22),
+                        onPressed: () => GachaModal.show(context),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.receipt_long, color: AppColors.financial, size: 22),
+                        onPressed: () => context.push('/cashflow'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded,
+                            color: AppColors.textSecondary, size: 22),
+                        onPressed: () async {
+                          await auth.refreshStats();
+                          await _loadInitialData();
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'SAVINGRANK',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 2.5,
+
+                  // ── Main Content ───────────────────────────────────────────────
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        
+                        // ── Safe Zone Banner (Payday) ───────────────────────────
+                        SafeZoneBanner(isPayday: _isSimulatePayday),
+
+                        // ── User Profile Header (rank from total savings) ───────
+                        UserProfileHeader(
+                          stats: stats,
+                          username: profile.username,
+                          avatarUrl: profile.avatarUrl,
+                          currencyMode: _currencyMode,
+                          onCurrencyToggle: _toggleCurrency,
+                          netWorthIdr: _rankNetWorthIdr,
+                          streakCount: streakCount,
+                          userId: auth.supabaseUser?.id,
+                          transactions: _transactions,
+                          financialHpPercentage: _financialHpPercentage,
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── Hero Financial Rank Card (incorporates embedded chart!) ──
+                        FinancialRankCard(
+                          netWorthIdr: _rankNetWorthIdr,
+                          displayNetWorthIdr: _rankNetWorthIdr, 
+                          monthlySavings: _monthlySavings,
+                          onTapEdit: () async {
+                            final res = await NetWorthSheet.show(context,
+                                currentIdr: _rankNetWorthIdr, currencyMode: _currencyMode);
+                            if (res != null) {
+                              _showSnack('Net worth updated to Rp ${res.amountIdr}');
+                            }
+                          },
+                          onTapChart: () => _showSavingsChartDetail(context),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── Financial HP Bar (NEW) ──────────────────────────────
+                        FinancialHpBar(hpPercentage: _financialHpPercentage),
+                        const SizedBox(height: 20),
+
+                        const SizedBox(height: 100), // Extra scrolling space
+                      ]),
                     ),
                   ),
                 ],
               ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.receipt_long, color: AppColors.financial, size: 22),
-                  onPressed: () => context.push('/cashflow'),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded,
-                      color: AppColors.textSecondary, size: 22),
-                  onPressed: () async {
-                    await auth.refreshStats();
-                    await _loadInitialData();
-                  },
-                ),
-                const SizedBox(width: 8),
-              ],
             ),
+          ),
 
-            // ── Main Content ───────────────────────────────────────────────
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
+          // Floating Notif Gacha
+          if (gachaProvider.shouldShowNotif)
+            Positioned(
+              right: 16,
+              top: 100, // Below app bar
+              child: _buildGachaNotif(gachaProvider),
+            ),
+        ],
+      ),
+    );
+  }
 
-                  // ── User Profile Header (rank from total savings) ───────
-                  UserProfileHeader(
-                    stats: stats,
-                    username: profile.username,
-                    avatarUrl: profile.avatarUrl,
-                    currencyMode: _currencyMode,
-                    onCurrencyToggle: _toggleCurrency,
-                    netWorthIdr: _rankNetWorthIdr,
-                    streakCount: streakCount,
-                    userId: auth.supabaseUser?.id,
+  Widget _buildGachaNotif(GachaProvider provider) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.xpGreen.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.xpGreen.withValues(alpha: 0.2),
+              blurRadius: 8,
+              spreadRadius: 2,
+            )
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => GachaModal.show(context),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.inventory_2_rounded, color: AppColors.xpGreen, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${provider.tickets} Gacha Tersedia!',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Hero Financial Rank Card (incorporates embedded chart!) ──
-                  FinancialRankCard(
-                    netWorthIdr: _rankNetWorthIdr,
-                    displayNetWorthIdr: _rankNetWorthIdr, // Now it displays the full 'My Wealth' value
-                    monthlySavings: _monthlySavings,
-                    onTapEdit: () async {
-                      final res = await NetWorthSheet.show(context,
-                          currentIdr: _rankNetWorthIdr, currencyMode: _currencyMode);
-                      if (res != null) {
-                        _showSnack('Net worth updated to Rp ${res.amountIdr}');
-                      }
-                    },
-                    onTapChart: () => _showSavingsChartDetail(context),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Financial Metrics 2×2 ──────────────────────────────
-                  _SectionLabel(
-                    label: 'FINANCIAL METRICS',
-                    color: AppColors.financial,
-                  ).animate().fadeIn(duration: 400.ms, delay: 400.ms),
-
-                  const SizedBox(height: 12),
-
-                  FinancialMetricsRow(
-                    transactions: _transactions,
-                    currencyMode: _currencyMode,
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Supporting Attributes (Moved below metrics!) ──────────
-                  _SectionLabel(
-                    label: 'ATTRIBUTES',
-                    color: AppColors.textSecondary,
-                  ).animate().fadeIn(duration: 400.ms, delay: 450.ms),
-
-                  const SizedBox(height: 12),
-
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.45,
-                    children: [
-                      SupportAttributeCard(
-                        title: 'Career',
-                        rpgLabel: 'Income Engine',
-                        emoji: '💼',
-                        color: AppColors.career,
-                        xp: stats.careerXp,
-                        route: '/career',
-                        index: 0,
-                      ),
-                      SupportAttributeCard(
-                        title: 'Knowledge',
-                        rpgLabel: 'Skill Power',
-                        emoji: '📚',
-                        color: AppColors.knowledge,
-                        xp: stats.knowledgeXp,
-                        route: '/knowledge',
-                        index: 1,
-                      ),
-                      SupportAttributeCard(
-                        title: 'Habit',
-                        rpgLabel: 'Discipline',
-                        emoji: '🔥',
-                        color: AppColors.habit,
-                        xp: stats.habitXp,
-                        route: '/habit',
-                        index: 2,
-                      ),
-                      SupportAttributeCard(
-                        title: 'Health',
-                        rpgLabel: 'Energy',
-                        emoji: '💪',
-                        color: AppColors.health,
-                        xp: stats.healthXp,
-                        route: '/health',
-                        index: 3,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // ── Streak Bulan Ini (Moved below attributes!) ──────────
-                  _SectionLabel(
-                    label: 'STREAK BULAN INI',
-                    color: AppColors.habit,
-                  ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
-
-                  const SizedBox(height: 12),
-
-                  MonthlyStreakWidget(
-                    activeDays: _activeDays,
-                    accentColor: AppColors.habit,
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // ── Daily Financial Todos + Motivation ─────────────────
-                  DailyFinancialTodos(
-                    todos: displayedTodos,
-                    highlightedIds: highlightedIds,
-                    onComplete: _completeTodo,
-                    onDelete: _deleteTodo,
-                    onAddCustom: _addCustomTodo,
-                  ),
-
-                  const SizedBox(height: 20),
-                ]),
+                ],
               ),
+            ),
+            const SizedBox(width: 12),
+            InkWell(
+              onTap: () => provider.closeNotif(),
+              child: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 16),
             ),
           ],
         ),
-      ),
+      ).animate().slideX(begin: 1.0).fadeIn(),
     );
   }
 }
@@ -464,11 +373,18 @@ class _SectionLabel extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 3,
-          height: 14,
+          width: 12,
+          height: 12,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(2),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.4),
+                blurRadius: 6,
+                spreadRadius: 1,
+              ),
+            ],
           ),
         ),
         const SizedBox(width: 10),

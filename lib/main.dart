@@ -6,6 +6,8 @@ import 'core/services/supabase_service.dart';
 import 'core/router/app_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'features/auth/providers/auth_provider.dart';
+import 'features/cashflow/providers/boss_battle_provider.dart';
+import 'features/cashflow/providers/gacha_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +44,8 @@ class LifeRankApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => BossBattleProvider()),
+        ChangeNotifierProvider(create: (_) => GachaProvider()),
       ],
       child: Builder(
         builder: (ctx) {

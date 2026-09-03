@@ -7,6 +7,7 @@ import 'package:life_rank/core/services/user_stats_service.dart';
 import 'package:life_rank/features/auth/providers/auth_provider.dart';
 
 import '../widgets/add_transaction_bottom_sheet.dart';
+import 'package:life_rank/shared/widgets/respect_modal.dart';
 
 class CashflowPage extends StatefulWidget {
   const CashflowPage({super.key});
@@ -71,6 +72,8 @@ class _CashflowPageState extends State<CashflowPage> {
           onTransactionAdded: () {
             Navigator.pop(ctx);
             _loadTransactions();
+            // Tampilkan popup "Respect+" setelah berhasil menginput transaksi
+            RespectModal.show(context);
           },
         ),
       ),

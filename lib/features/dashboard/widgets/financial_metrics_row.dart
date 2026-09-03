@@ -17,11 +17,13 @@ class FinancialMetricsRow extends StatelessWidget {
   double get _monthlyFixedIncomeUsd {
     final now = DateTime.now();
     final idr = transactions
-        .where((t) =>
-            t.type == 'income' &&
-            (t.incomeType == 'fixed' || t.incomeType == null) &&
-            t.date.month == now.month &&
-            t.date.year == now.year)
+        .where(
+          (t) =>
+              t.type == 'income' &&
+              (t.incomeType == 'fixed' || t.incomeType == null) &&
+              t.date.month == now.month &&
+              t.date.year == now.year,
+        )
         .fold(0.0, (sum, t) => sum + t.amount);
     return idr / WealthConfig.usdToIdr;
   }
@@ -29,11 +31,13 @@ class FinancialMetricsRow extends StatelessWidget {
   double get _monthlySideIncomeUsd {
     final now = DateTime.now();
     final idr = transactions
-        .where((t) =>
-            t.type == 'income' &&
-            t.incomeType == 'side' &&
-            t.date.month == now.month &&
-            t.date.year == now.year)
+        .where(
+          (t) =>
+              t.type == 'income' &&
+              t.incomeType == 'side' &&
+              t.date.month == now.month &&
+              t.date.year == now.year,
+        )
         .fold(0.0, (sum, t) => sum + t.amount);
     return idr / WealthConfig.usdToIdr;
   }
@@ -41,10 +45,12 @@ class FinancialMetricsRow extends StatelessWidget {
   double get _monthlyTotalIncomeUsd {
     final now = DateTime.now();
     final idr = transactions
-        .where((t) =>
-            t.type == 'income' &&
-            t.date.month == now.month &&
-            t.date.year == now.year)
+        .where(
+          (t) =>
+              t.type == 'income' &&
+              t.date.month == now.month &&
+              t.date.year == now.year,
+        )
         .fold(0.0, (sum, t) => sum + t.amount);
     return idr / WealthConfig.usdToIdr;
   }
@@ -52,20 +58,34 @@ class FinancialMetricsRow extends StatelessWidget {
   double get _monthlyExpenseUsd {
     final now = DateTime.now();
     final idr = transactions
-        .where((t) =>
-            t.type == 'expense' &&
-            t.date.month == now.month &&
-            t.date.year == now.year)
+        .where(
+          (t) =>
+              t.type == 'expense' &&
+              t.date.month == now.month &&
+              t.date.year == now.year,
+        )
         .fold(0.0, (sum, t) => sum + t.amount);
     return idr / WealthConfig.usdToIdr;
   }
 
   @override
   Widget build(BuildContext context) {
-    final fixedStr = WealthConfig.formatAmountCompact(_monthlyFixedIncomeUsd, currencyMode);
-    final sideStr = WealthConfig.formatAmountCompact(_monthlySideIncomeUsd, currencyMode);
-    final totalStr = WealthConfig.formatAmountCompact(_monthlyTotalIncomeUsd, currencyMode);
-    final expenseStr = WealthConfig.formatAmountCompact(_monthlyExpenseUsd, currencyMode);
+    final fixedStr = WealthConfig.formatAmountCompact(
+      _monthlyFixedIncomeUsd,
+      currencyMode,
+    );
+    final sideStr = WealthConfig.formatAmountCompact(
+      _monthlySideIncomeUsd,
+      currencyMode,
+    );
+    final totalStr = WealthConfig.formatAmountCompact(
+      _monthlyTotalIncomeUsd,
+      currencyMode,
+    );
+    final expenseStr = WealthConfig.formatAmountCompact(
+      _monthlyExpenseUsd,
+      currencyMode,
+    );
 
     return Column(
       children: [
@@ -137,85 +157,99 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.07),
-              blurRadius: 12,
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color.withValues(alpha: 0.20), color.withValues(alpha: 0.06)],
+      child:
+          Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: color.withValues(alpha: 0.25)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.07),
+                      blurRadius: 12,
+                      spreadRadius: 0,
                     ),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: color.withValues(alpha: 0.3)),
-                  ),
-                  child: Icon(icon, color: color, size: 16),
+                  ],
                 ),
-                const Spacer(),
-                Text(
-                  label.toUpperCase(),
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                color.withValues(alpha: 0.20),
+                                color.withValues(alpha: 0.06),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Icon(icon, color: color, size: 16),
+                        ),
+                        const Spacer(),
+                        Text(
+                          label.toUpperCase(),
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.0,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    // Animated count-up value
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: Duration(milliseconds: 600 + 100 * index),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, t, _) {
+                        return Text(
+                          value,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      sublabel,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Animated count-up value
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: Duration(milliseconds: 600 + 100 * index),
-              curve: Curves.easeOutCubic,
-              builder: (_, t, __) {
-                return Text(
-                  value,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 2),
-            Text(
-              sublabel,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      )
-          .animate(delay: Duration(milliseconds: 80 * index))
-          .fadeIn(duration: 500.ms)
-          .slideY(begin: 0.2, end: 0, duration: 500.ms, curve: Curves.easeOutCubic)
-          .then()
-          .shimmer(duration: 600.ms, color: color.withValues(alpha: 0.15)),
+              )
+              .animate(delay: Duration(milliseconds: 80 * index))
+              .fadeIn(duration: 500.ms)
+              .slideY(
+                begin: 0.2,
+                end: 0,
+                duration: 500.ms,
+                curve: Curves.easeOutCubic,
+              )
+              .then()
+              .shimmer(duration: 600.ms, color: color.withValues(alpha: 0.15)),
     );
   }
 }
