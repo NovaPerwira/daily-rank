@@ -8,9 +8,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:life_rank/core/constants/app_colors.dart';
 import 'package:life_rank/core/models/category_models.dart';
+import 'package:life_rank/core/models/receipt_item_model.dart';
+import 'package:life_rank/core/services/receipt_parser_service.dart';
 import 'package:life_rank/core/services/user_stats_service.dart';
 import 'package:life_rank/features/auth/providers/auth_provider.dart';
 import 'package:life_rank/features/cashflow/providers/gacha_provider.dart';
+import 'package:life_rank/features/cashflow/widgets/receipt_items_sheet.dart';
 // ML Kit only available on mobile
 // ignore: uri_does_not_exist
 import 'scan_helper_stub.dart'
@@ -187,11 +190,42 @@ class _AddTransactionPageState extends State<AddTransactionPage>
     try {
       // ignore: undefined_method, undefined_identifier
       final fullText = await performOcr(xFile.path);
-      _parseReceiptText(fullText);
+
+      if (fullText.isEmpty) {
+        setState(() {
+          _isScanning = false;
+          _scanResult = 'Teks tidak terbaca — isi manual';
+        });
+        return;
+      }
+
+      // ── Parse item-item dari struk ────────────────────────────────
+      final result = ReceiptParserService.parse(fullText);
+
       setState(() {
         _isScanning = false;
-        _scanResult = fullText.isEmpty ? 'Teks tidak terbaca' : 'Scan berhasil ✓';
+        _scanResult = result.hasItems
+            ? 'Scan berhasil ✓ — ${result.items.length} item ditemukan'
+            : 'Scan berhasil ✓ — Tidak ada item, isi manual';
       });
+
+      if (result.hasItems && mounted) {
+        HapticFeedback.mediumImpact();
+        // Tampilkan bottom sheet konfirmasi item
+        await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => ReceiptItemsSheet(
+            parseResult: result,
+            transactionDate: _selectedDate,
+            onSave: _saveItemsFromReceipt,
+          ),
+        );
+      } else {
+        // Fallback: isi total & kategori manual seperti sebelumnya
+        _fallbackFillForm(fullText);
+      }
     } catch (e) {
       setState(() {
         _isScanning = false;
@@ -200,70 +234,97 @@ class _AddTransactionPageState extends State<AddTransactionPage>
     }
   }
 
-  /// Parse teks OCR dari struk untuk ambil nominal & kategori
-  void _parseReceiptText(String text) {
-    final lines = text.split('\n');
+  /// Fallback: isi form manual dari teks OCR (total + kategori)
+  void _fallbackFillForm(String text) {
+    final result = ReceiptParserService.parse(text);
 
-    // ── Cari nominal (TOTAL) ──────────────────────────────────────────
-    final totalPatterns = [
-      RegExp(r'(?:grand\s*)?total[:\s]+(?:rp\.?\s*)?([0-9][0-9.,]+)', caseSensitive: false),
-      RegExp(r'(?:jumlah|amount|tagihan)[:\s]+(?:rp\.?\s*)?([0-9][0-9.,]+)', caseSensitive: false),
-      RegExp(r'rp\.?\s*([0-9][0-9.,]{3,})', caseSensitive: false),
-    ];
-
-    double? detectedAmount;
-    for (final pattern in totalPatterns) {
-      for (final line in lines) {
-        final match = pattern.firstMatch(line);
-        if (match != null) {
-          final raw = match.group(1)!
-              .replaceAll(RegExp(r'[.,](?=\d{3})'), '')
-              .replaceAll(',', '');
-          final val = double.tryParse(raw.replaceAll(RegExp(r'[^0-9]'), ''));
-          if (val != null && val > 0) {
-            if (detectedAmount == null || val > detectedAmount) {
-              detectedAmount = val;
-            }
-          }
-        }
-      }
+    if (result.grandTotal != null && _amountCtrl.text.isEmpty) {
+      _amountCtrl.text = result.grandTotal!.toStringAsFixed(0);
     }
-
-    if (detectedAmount != null && _amountCtrl.text.isEmpty) {
-      _amountCtrl.text = detectedAmount.toStringAsFixed(0);
+    if (_categoryCtrl.text.isEmpty && result.merchant != null) {
+      _categoryCtrl.text = result.suggestedCategory;
+      if (_type != 'expense') setState(() => _type = 'expense');
     }
-
-    // ── Cari kategori dari nama toko / merchant ───────────────────────
-    const merchantMap = {
-      'indomaret': 'Belanja', 'alfamart': 'Belanja', 'alfamidi': 'Belanja',
-      'lawson': 'Belanja', 'circle k': 'Belanja', 'hypermart': 'Belanja',
-      'carrefour': 'Belanja', 'transmart': 'Belanja', 'lottemart': 'Belanja',
-      'superindo': 'Belanja',
-      'mcdonald': 'Makanan', 'kfc': 'Makanan', 'burger king': 'Makanan',
-      'pizza hut': 'Makanan', 'jco': 'Makanan', 'starbucks': 'Makanan',
-      'chatime': 'Makanan',
-      'gojek': 'Transport', 'grab': 'Transport', 'transjakarta': 'Transport',
-      'krl': 'Transport',
-      'apotek': 'Kesehatan', 'kimia farma': 'Kesehatan',
-      'century': 'Kesehatan', 'guardian': 'Kesehatan',
-      'netflix': 'Hiburan', 'spotify': 'Hiburan',
-    };
-
-    if (_categoryCtrl.text.isEmpty) {
-      final lowerText = text.toLowerCase();
-      for (final entry in merchantMap.entries) {
-        if (lowerText.contains(entry.key)) {
-          _categoryCtrl.text = entry.value;
-          if (_type != 'expense') setState(() => _type = 'expense');
-          break;
-        }
-      }
-    }
-
     setState(() {});
-
-    if (detectedAmount != null || _categoryCtrl.text.isNotEmpty) {
+    if (result.grandTotal != null || result.merchant != null) {
       HapticFeedback.mediumImpact();
+    }
+  }
+
+  /// Simpan semua item yang dipilih dari ReceiptItemsSheet sebagai transaksi terpisah.
+  Future<void> _saveItemsFromReceipt(
+    List<ReceiptItem> items,
+    String category,
+    DateTime date,
+  ) async {
+    if (items.isEmpty) return;
+
+    final auth = context.read<AuthProvider>();
+    if (auth.supabaseUser == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      for (final item in items) {
+        final tx = TransactionModel(
+          id: '',
+          userId: auth.supabaseUser!.id,
+          type: 'expense',
+          amount: item.effectiveTotal,
+          date: date,
+          category: '$category — ${item.name}',
+          incomeType: null,
+        );
+        await UserStatsService.addTransaction(tx);
+      }
+
+      await auth.refreshStats();
+
+      // Award gacha streak
+      if (mounted) {
+        final gacha = context.read<GachaProvider>();
+        final activeDays = await UserStatsService.getMonthlyActivedays(
+          auth.supabaseUser!.id,
+        );
+        gacha.checkStreakAndAwardTicket(activeDays.length);
+      }
+
+      if (mounted) {
+        HapticFeedback.heavyImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Text('🧾', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 10),
+                Text(
+                  '${items.length} transaksi dari struk tersimpan!',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.card,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal simpan: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 

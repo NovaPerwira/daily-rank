@@ -14,6 +14,7 @@ import '../../features/categories/health/pages/health_page.dart';
 import '../../features/profile/pages/profile_page.dart';
 import '../../features/cashflow/pages/cashflow_page.dart';
 import '../../features/cashflow/pages/add_transaction_page.dart';
+import '../../features/cashflow/pages/scan_receipt_page.dart';
 import '../../features/quests/pages/quests_page.dart';
 import '../../features/stats/pages/stats_page.dart';
 import '../constants/app_colors.dart';
@@ -98,6 +99,10 @@ GoRouter createRouter(BuildContext context) {
             path: '/add-transaction',
             builder: (ctx, state) => const AddTransactionPage(),
           ),
+          GoRoute(
+            path: '/scan-receipt',
+            builder: (ctx, state) => const ScanReceiptPage(),
+          ),
         ],
       ),
     ],
@@ -159,9 +164,9 @@ class AppShell extends StatelessWidget {
                   isActive: selectedIndex == 1,
                   onTap: () => context.go('/quests'),
                 ),
-                // ── Center FAB-style "+" button ──────────────────────
+                // ── Center FAB-style button ──────────────────────────
                 GestureDetector(
-                  onTap: () => context.push('/add-transaction'),
+                  onTap: () => _showAddMenu(context),
                   child: Container(
                     width: 52,
                     height: 52,
@@ -210,36 +215,159 @@ class AppShell extends StatelessWidget {
     );
   }
 
-  void _showCategoryMenu(BuildContext context) {
+  void _showAddMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               const Text(
-                'CATEGORIES',
+                'TAMBAH TRANSAKSI',
                 style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
                   letterSpacing: 2,
                 ),
               ),
               const SizedBox(height: 16),
-              _CategoryMenuItem(emoji: '💰', title: 'Financial', color: AppColors.financial, onTap: () { Navigator.pop(ctx); context.go('/financial'); }),
-              _CategoryMenuItem(emoji: '💼', title: 'Career', color: AppColors.career, onTap: () { Navigator.pop(ctx); context.go('/career'); }),
-              _CategoryMenuItem(emoji: '🔥', title: 'Habit', color: AppColors.habit, onTap: () { Navigator.pop(ctx); context.go('/habit'); }),
-              _CategoryMenuItem(emoji: '📚', title: 'Knowledge', color: AppColors.knowledge, onTap: () { Navigator.pop(ctx); context.go('/knowledge'); }),
-              _CategoryMenuItem(emoji: '💪', title: 'Health', color: AppColors.health, onTap: () { Navigator.pop(ctx); context.go('/health'); }),
-              const SizedBox(height: 8),
+              // ── Scan Nota ──────────────────────────────────────
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.push('/scan-receipt');
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary.withValues(alpha: 0.15),
+                        AppColors.financial.withValues(alpha: 0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.document_scanner_rounded,
+                          color: AppColors.primary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Scan Nota',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Foto struk → item langsung terdeteksi otomatis',
+                              style: TextStyle(
+                                  color: AppColors.textMuted, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded,
+                          color: AppColors.primary, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // ── Input Manual ────────────────────────────────────
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.push('/add-transaction');
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.textMuted.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.edit_note_rounded,
+                          color: AppColors.textSecondary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Input Manual',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Isi nominal, kategori & catatan sendiri',
+                              style: TextStyle(
+                                  color: AppColors.textMuted, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded,
+                          color: AppColors.textMuted, size: 14),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -292,45 +420,6 @@ class _NavItem extends StatelessWidget {
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryMenuItem extends StatelessWidget {
-  final String emoji;
-  final String title;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _CategoryMenuItem({
-    required this.emoji,
-    required this.title,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 24)),
-            const SizedBox(width: 14),
-            Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
-            const Spacer(),
-            Icon(Icons.arrow_forward_ios, color: AppColors.textMuted, size: 14),
           ],
         ),
       ),
