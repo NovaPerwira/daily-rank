@@ -14,10 +14,7 @@ import 'package:life_rank/core/services/user_stats_service.dart';
 import 'package:life_rank/features/auth/providers/auth_provider.dart';
 import 'package:life_rank/features/cashflow/providers/gacha_provider.dart';
 import 'package:life_rank/features/cashflow/widgets/receipt_items_sheet.dart';
-// ML Kit only available on mobile
-// ignore: uri_does_not_exist
-import 'scan_helper_stub.dart'
-    if (dart.library.io) 'scan_helper_native.dart';
+// Using AI for parsing instead of ML Kit
 
 class AddTransactionPage extends StatefulWidget {
   const AddTransactionPage({super.key});
@@ -178,29 +175,11 @@ class _AddTransactionPageState extends State<AddTransactionPage>
       _scanResult = null;
     });
 
-    if (kIsWeb) {
-      // ML Kit tidak tersedia di web — gambar berhasil diupload, input manual
-      setState(() {
-        _isScanning = false;
-        _scanResult = 'Gambar terupload ✓ — Isi nominal & kategori manual';
-      });
-      return;
-    }
+
 
     try {
-      // ignore: undefined_method, undefined_identifier
-      final fullText = await performOcr(xFile.path);
-
-      if (fullText.isEmpty) {
-        setState(() {
-          _isScanning = false;
-          _scanResult = 'Teks tidak terbaca — isi manual';
-        });
-        return;
-      }
-
-      // ── Parse item-item dari struk ────────────────────────────────
-      final result = ReceiptParserService.parse(fullText);
+      // ── Parse item-item dari struk menggunakan AI ────────────────────────────────
+      final result = await ReceiptParserService.parseWithAI(bytes);
 
       setState(() {
         _isScanning = false;
@@ -223,8 +202,14 @@ class _AddTransactionPageState extends State<AddTransactionPage>
           ),
         );
       } else {
-        // Fallback: isi total & kategori manual seperti sebelumnya
-        _fallbackFillForm(fullText);
+        // Fallback: karena AI selalu mengembalikan total jika ada, kita langsung populate
+        if (result.grandTotal != null && _amountCtrl.text.isEmpty) {
+          _amountCtrl.text = result.grandTotal!.toStringAsFixed(0);
+        }
+        if (_categoryCtrl.text.isEmpty && result.merchant != null) {
+          _categoryCtrl.text = result.suggestedCategory;
+          if (_type != 'expense') setState(() => _type = 'expense');
+        }
       }
     } catch (e) {
       setState(() {
@@ -234,22 +219,7 @@ class _AddTransactionPageState extends State<AddTransactionPage>
     }
   }
 
-  /// Fallback: isi form manual dari teks OCR (total + kategori)
-  void _fallbackFillForm(String text) {
-    final result = ReceiptParserService.parse(text);
 
-    if (result.grandTotal != null && _amountCtrl.text.isEmpty) {
-      _amountCtrl.text = result.grandTotal!.toStringAsFixed(0);
-    }
-    if (_categoryCtrl.text.isEmpty && result.merchant != null) {
-      _categoryCtrl.text = result.suggestedCategory;
-      if (_type != 'expense') setState(() => _type = 'expense');
-    }
-    setState(() {});
-    if (result.grandTotal != null || result.merchant != null) {
-      HapticFeedback.mediumImpact();
-    }
-  }
 
   /// Simpan semua item yang dipilih dari ReceiptItemsSheet sebagai transaksi terpisah.
   Future<void> _saveItemsFromReceipt(

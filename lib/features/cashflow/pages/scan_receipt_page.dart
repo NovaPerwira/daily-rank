@@ -15,9 +15,7 @@ import 'package:life_rank/core/services/user_stats_service.dart';
 import 'package:life_rank/features/auth/providers/auth_provider.dart';
 import 'package:life_rank/features/cashflow/providers/gacha_provider.dart';
 
-// ML Kit only available on mobile
-// ignore: uri_does_not_exist
-import 'scan_helper_stub.dart' if (dart.library.io) 'scan_helper_native.dart';
+// Using AI for parsing instead of ML Kit
 
 /// Halaman scan nota yang langsung action:
 /// Buka → pilih kamera/gallery → OCR → tampilkan item → Simpan.
@@ -108,28 +106,10 @@ class _ScanReceiptPageState extends State<ScanReceiptPage> {
       _imageBytes = bytes;
     });
 
-    if (kIsWeb) {
-      // Web: tidak ada OCR, tampilkan pesan
-      setState(() {
-        _state = _ScanState.unsupported;
-        _result = ReceiptParseResult(items: [], merchant: null, grandTotal: null);
-      });
-      return;
-    }
+
 
     try {
-      // ignore: undefined_function, undefined_method
-      final fullText = await performOcr(xFile.path);
-
-      if (fullText.isEmpty) {
-        setState(() {
-          _state = _ScanState.error;
-          _errorMsg = 'Teks tidak terbaca.\nCoba foto ulang dengan cahaya yang lebih terang.';
-        });
-        return;
-      }
-
-      final result = ReceiptParserService.parse(fullText);
+      final result = await ReceiptParserService.parseWithAI(bytes);
       _result = result;
 
       if (result.hasItems) {

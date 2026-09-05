@@ -1,3 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
+
 import 'package:life_rank/core/models/receipt_item_model.dart';
 
 /// Parser teks OCR dari struk / nota belanja Indonesia.
@@ -8,6 +15,153 @@ import 'package:life_rank/core/models/receipt_item_model.dart';
 /// - Struk generik kasir POS
 /// - GoFood / GrabFood receipt
 class ReceiptParserService {
+  // ── AI Extraction ─────────────────────────────────────────────────────────
+
+  static Future<ReceiptParseResult> parseWithAI(Uint8List imageBytes) async {
+    final provider = dotenv.env['AI_PROVIDER']?.toLowerCase() ?? 'gemini';
+    
+    final prompt = '''
+You are an expert receipt data extractor for Indonesian receipts.
+Analyze the provided receipt image and extract the data into a JSON object with this exact structure:
+{
+  "merchant": "Name of the store (string or null)",
+  "items": [
+    {
+      "name": "Item name (string)",
+      "qty": 1, 
+      "unitPrice": 10000, 
+      "total": 10000 
+    }
+  ],
+  "grandTotal": 100000 
+}
+Rules:
+- Only output valid JSON.
+- Convert prices into numbers (remove Rp, dots, commas).
+- Do not include noise items like "Tunai", "Kembalian", "Total", "Tax", "PPN".
+- Ensure qty is always an integer.
+''';
+
+    String text = '';
+
+    if (provider == 'openrouter') {
+      text = await _parseWithOpenRouter(prompt, imageBytes);
+    } else {
+      text = await _parseWithGemini(prompt, imageBytes);
+    }
+
+    if (text.isEmpty) {
+      throw Exception('Gagal mendapatkan response dari AI');
+    }
+
+    // Bersihkan format markdown jika model mengembalikan blok ```json ... ```
+    text = text.trim();
+    if (text.startsWith('```json')) {
+      text = text.substring(7);
+    } else if (text.startsWith('```')) {
+      text = text.substring(3);
+    }
+    if (text.endsWith('```')) {
+      text = text.substring(0, text.length - 3);
+    }
+    text = text.trim();
+
+    try {
+      final json = jsonDecode(text);
+      final merchant = json['merchant'] as String?;
+      final grandTotal = (json['grandTotal'] as num?)?.toDouble();
+      
+      final itemsList = json['items'] as List<dynamic>? ?? [];
+      final items = itemsList.map((item) {
+        return ReceiptItem(
+          name: item['name']?.toString() ?? 'Unknown',
+          qty: (item['qty'] as num?)?.toInt() ?? 1,
+          unitPrice: (item['unitPrice'] as num?)?.toDouble() ?? 0,
+          total: (item['total'] as num?)?.toDouble() ?? 0,
+        );
+      }).toList();
+
+      return ReceiptParseResult(
+        merchant: merchant,
+        items: _filterItems(items),
+        grandTotal: grandTotal,
+      );
+    } catch (e) {
+      throw Exception('Format JSON tidak sesuai: $e\nResponse: $text');
+    }
+  }
+
+  static Future<String> _parseWithGemini(String prompt, Uint8List imageBytes) async {
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception('API Key Gemini tidak ditemukan di .env. Silakan tambahkan GEMINI_API_KEY Anda.');
+    }
+
+    final model = GenerativeModel(
+      model: 'gemini-1.5-flash', // Bisa diganti ke model lain
+      apiKey: apiKey,
+    );
+
+    final response = await model.generateContent([
+      Content.multi([
+        TextPart(prompt),
+        DataPart('image/jpeg', imageBytes),
+      ])
+    ]);
+
+    return response.text ?? '';
+  }
+
+  static Future<String> _parseWithOpenRouter(String prompt, Uint8List imageBytes) async {
+    final apiKey = dotenv.env['OPENROUTER_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception('API Key OpenRouter tidak ditemukan di .env. Silakan tambahkan OPENROUTER_API_KEY Anda.');
+    }
+
+    final model = dotenv.env['OPENROUTER_MODEL'] ?? 'google/gemini-2.5-flash-lite';
+    final base64Image = base64Encode(imageBytes);
+
+    final response = await http.post(
+      Uri.parse('https://openrouter.ai/api/v1/chat/completions'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+        'HTTP-Referer': 'https://github.com/novap/life_rank', // Required by OpenRouter
+        'X-Title': 'Life Rank', // Optional by OpenRouter
+      },
+      body: jsonEncode({
+        'model': model,
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              {
+                'type': 'text',
+                'text': prompt,
+              },
+              {
+                'type': 'image_url',
+                'image_url': {
+                  'url': 'data:image/jpeg;base64,$base64Image',
+                }
+              }
+            ]
+          }
+        ],
+        'reasoning': {
+          'enabled': true
+        }
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('OpenRouter API Error: ${response.statusCode} - ${response.body}');
+    }
+
+    final json = jsonDecode(response.body);
+    return json['choices']?[0]?['message']?['content'] ?? '';
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────
 
   /// Parse teks OCR mentah menjadi daftar [ReceiptItem].

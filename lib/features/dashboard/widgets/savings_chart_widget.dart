@@ -52,8 +52,9 @@ class _SavingsChartWidgetState extends State<SavingsChartWidget>
   }
 
   String _formatCompact(double amount) {
-    if (amount >= 1000000000)
+    if (amount >= 1000000000) {
       return '${(amount / 1000000000).toStringAsFixed(1)}M';
+    }
     if (amount >= 1000000) return '${(amount / 1000000).toStringAsFixed(0)}Jt';
     if (amount >= 1000) return '${(amount / 1000).toStringAsFixed(0)}Rb';
     return amount.toStringAsFixed(0);

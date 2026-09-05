@@ -20,9 +20,7 @@ class RespectModal extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
-        return RespectModal(
-          onContinue: onContinue ?? () {},
-        );
+        return RespectModal(onContinue: onContinue ?? () {});
       },
     );
   }
@@ -39,15 +37,15 @@ class RespectModal extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E24).withOpacity(0.85),
+            color: const Color(0xFF1E1E24).withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.greenAccent.withOpacity(0.2),
+                color: Colors.greenAccent.withValues(alpha: 0.2),
                 blurRadius: 30,
                 spreadRadius: -5,
               ),
@@ -68,7 +66,7 @@ class RespectModal extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.greenAccent.withOpacity(0.4),
+                          color: Colors.greenAccent.withValues(alpha: 0.4),
                           blurRadius: 40,
                           spreadRadius: 10,
                         ),
@@ -85,12 +83,20 @@ class RespectModal extends StatelessWidget {
                   Positioned(
                     top: 0,
                     right: -10,
-                    child: Icon(Icons.arrow_upward_rounded, color: Colors.greenAccent, size: 24),
+                    child: Icon(
+                      Icons.arrow_upward_rounded,
+                      color: Colors.greenAccent,
+                      size: 24,
+                    ),
                   ),
                   Positioned(
                     bottom: 20,
                     left: -10,
-                    child: Icon(Icons.arrow_upward_rounded, color: Colors.greenAccent, size: 20),
+                    child: Icon(
+                      Icons.arrow_upward_rounded,
+                      color: Colors.greenAccent,
+                      size: 20,
+                    ),
                   ),
                 ],
               ),
@@ -104,12 +110,7 @@ class RespectModal extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                   color: Colors.greenAccent,
                   letterSpacing: 2,
-                  shadows: [
-                    Shadow(
-                      color: Colors.greenAccent,
-                      blurRadius: 15,
-                    )
-                  ],
+                  shadows: [Shadow(color: Colors.greenAccent, blurRadius: 15)],
                 ),
               ),
               const SizedBox(height: 16),
@@ -161,16 +162,18 @@ class RespectModal extends StatelessWidget {
                 onPressed: () => Navigator.of(context).pop(),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white54,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
                   ),
                 ),
-                child: const Text(
-                  "Close",
-                  style: TextStyle(fontSize: 14),
-                ),
+                child: const Text("Close", style: TextStyle(fontSize: 14)),
               ),
             ],
           ),

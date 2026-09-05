@@ -20,7 +20,7 @@ class StatsPage extends StatefulWidget {
 class _StatsPageState extends State<StatsPage> {
   List<TransactionModel> _transactions = [];
   Set<int> _activeDays = {};
-  CurrencyMode _currencyMode = CurrencyMode.idr;
+  final CurrencyMode _currencyMode = CurrencyMode.idr;
   bool _isLoading = true;
 
   @override
@@ -34,11 +34,14 @@ class _StatsPageState extends State<StatsPage> {
   Future<void> _loadStatsData() async {
     final auth = context.read<AuthProvider>();
     if (auth.supabaseUser == null) return;
-    
+
     final userId = auth.supabaseUser!.id;
     final txs = await UserStatsService.getTransactions(userId);
-    final active = await UserStatsService.getMonthlyActivedays(userId, preloadedTxs: txs);
-    
+    final active = await UserStatsService.getMonthlyActivedays(
+      userId,
+      preloadedTxs: txs,
+    );
+
     if (mounted) {
       setState(() {
         _transactions = txs;
@@ -56,116 +59,128 @@ class _StatsPageState extends State<StatsPage> {
     if (stats == null) {
       return const Scaffold(
         backgroundColor: AppColors.background,
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
       );
     }
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('ANALYTICS & STATS', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 2)),
+        title: const Text(
+          'ANALYTICS & STATS',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+            letterSpacing: 2,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: AppColors.background,
         elevation: 0,
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-        : RefreshIndicator(
-            onRefresh: _loadStatsData,
-            color: AppColors.primary,
-            backgroundColor: AppColors.card,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // ── Financial Metrics 2×2 ──────────────────────────────
-                const _StatsSectionLabel(
-                  label: 'FINANCIAL METRICS',
-                  color: AppColors.financial,
-                ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadStatsData,
+              color: AppColors.primary,
+              backgroundColor: AppColors.card,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // ── Financial Metrics 2×2 ──────────────────────────────
+                  const _StatsSectionLabel(
+                    label: 'FINANCIAL METRICS',
+                    color: AppColors.financial,
+                  ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
 
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                FinancialMetricsRow(
-                  transactions: _transactions,
-                  currencyMode: _currencyMode,
-                ),
+                  FinancialMetricsRow(
+                    transactions: _transactions,
+                    currencyMode: _currencyMode,
+                  ),
 
-                const SizedBox(height: 32),
+                  const SizedBox(height: 32),
 
-                // ── Supporting Attributes ──────────────────────────
-                const _StatsSectionLabel(
-                  label: 'ATTRIBUTES',
-                  color: AppColors.textSecondary,
-                ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+                  // ── Supporting Attributes ──────────────────────────
+                  const _StatsSectionLabel(
+                    label: 'ATTRIBUTES',
+                    color: AppColors.textSecondary,
+                  ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
 
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.45,
-                  children: [
-                    SupportAttributeCard(
-                      title: 'Career',
-                      rpgLabel: 'Income Engine',
-                      emoji: '💼',
-                      color: AppColors.career,
-                      xp: stats.careerXp,
-                      route: '/career',
-                      index: 0,
-                    ),
-                    SupportAttributeCard(
-                      title: 'Knowledge',
-                      rpgLabel: 'Skill Power',
-                      emoji: '📚',
-                      color: AppColors.knowledge,
-                      xp: stats.knowledgeXp,
-                      route: '/knowledge',
-                      index: 1,
-                    ),
-                    SupportAttributeCard(
-                      title: 'Habit',
-                      rpgLabel: 'Discipline',
-                      emoji: '🔥',
-                      color: AppColors.habit,
-                      xp: stats.habitXp,
-                      route: '/habit',
-                      index: 2,
-                    ),
-                    SupportAttributeCard(
-                      title: 'Health',
-                      rpgLabel: 'Energy',
-                      emoji: '💪',
-                      color: AppColors.health,
-                      xp: stats.healthXp,
-                      route: '/health',
-                      index: 3,
-                    ),
-                  ],
-                ),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.45,
+                    children: [
+                      SupportAttributeCard(
+                        title: 'Career',
+                        rpgLabel: 'Income Engine',
+                        emoji: '💼',
+                        color: AppColors.career,
+                        xp: stats.careerXp,
+                        route: '/career',
+                        index: 0,
+                      ),
+                      SupportAttributeCard(
+                        title: 'Knowledge',
+                        rpgLabel: 'Skill Power',
+                        emoji: '📚',
+                        color: AppColors.knowledge,
+                        xp: stats.knowledgeXp,
+                        route: '/knowledge',
+                        index: 1,
+                      ),
+                      SupportAttributeCard(
+                        title: 'Habit',
+                        rpgLabel: 'Discipline',
+                        emoji: '🔥',
+                        color: AppColors.habit,
+                        xp: stats.habitXp,
+                        route: '/habit',
+                        index: 2,
+                      ),
+                      SupportAttributeCard(
+                        title: 'Health',
+                        rpgLabel: 'Energy',
+                        emoji: '💪',
+                        color: AppColors.health,
+                        xp: stats.healthXp,
+                        route: '/health',
+                        index: 3,
+                      ),
+                    ],
+                  ),
 
-                const SizedBox(height: 32),
+                  const SizedBox(height: 32),
 
-                // ── Streak Bulan Ini ──────────────────────────
-                const _StatsSectionLabel(
-                  label: 'STREAK BULAN INI',
-                  color: AppColors.habit,
-                ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
+                  // ── Streak Bulan Ini ──────────────────────────
+                  const _StatsSectionLabel(
+                    label: 'STREAK BULAN INI',
+                    color: AppColors.habit,
+                  ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
 
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                MonthlyStreakWidget(
-                  activeDays: _activeDays,
-                  accentColor: AppColors.habit,
-                ),
+                  MonthlyStreakWidget(
+                    activeDays: _activeDays,
+                    accentColor: AppColors.habit,
+                  ),
 
-                const SizedBox(height: 100),
-              ],
+                  const SizedBox(height: 100),
+                ],
+              ),
             ),
-          ),
     );
   }
 }
