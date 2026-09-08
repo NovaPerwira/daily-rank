@@ -492,6 +492,19 @@ class _CashflowPageState extends State<CashflowPage> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  if (tx.note != null && tx.note!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      tx.note!,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                   const SizedBox(height: 3),
                   Row(
                     children: [

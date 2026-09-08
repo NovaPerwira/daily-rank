@@ -242,8 +242,9 @@ class _AddTransactionPageState extends State<AddTransactionPage>
           type: 'expense',
           amount: item.effectiveTotal,
           date: date,
-          category: '$category — ${item.name}',
+          category: category,
           incomeType: null,
+          note: item.name,
         );
         await UserStatsService.addTransaction(tx);
       }
@@ -330,10 +331,9 @@ class _AddTransactionPageState extends State<AddTransactionPage>
         type: _type,
         amount: amount,
         date: _selectedDate,
-        category: catText.isNotEmpty
-            ? (notes.isNotEmpty ? '$catText — $notes' : catText)
-            : defaultCategory,
+        category: catText.isNotEmpty ? catText : defaultCategory,
         incomeType: _type == 'income' ? 'fixed' : null,
+        note: notes.isNotEmpty ? notes : null,
       );
 
       await UserStatsService.addTransaction(tx);

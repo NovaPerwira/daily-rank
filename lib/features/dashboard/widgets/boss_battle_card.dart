@@ -117,7 +117,9 @@ class BossBattleCard extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      isDefeated ? '💀' : (isOverdue ? '👹' : '👾'),
+                      isDefeated 
+                        ? '💀' 
+                        : (boss.bossIcon ?? (isOverdue ? '👹' : '👾')),
                       style: const TextStyle(fontSize: 24),
                     ),
                   ),
@@ -129,7 +131,7 @@ class BossBattleCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        boss.name,
+                        boss.bossName ?? boss.name,
                         style: TextStyle(
                           color: isDefeated ? AppColors.textMuted : AppColors.textPrimary,
                           fontSize: 16,
@@ -137,6 +139,18 @@ class BossBattleCard extends StatelessWidget {
                           decoration: isDefeated ? TextDecoration.lineThrough : null,
                         ),
                       ),
+                      if (boss.bossName != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          boss.name,
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            decoration: isDefeated ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         'HP: Rp ${formatter.format(boss.amount)}',
@@ -146,6 +160,18 @@ class BossBattleCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      if (!isDefeated && boss.bossTaunt != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '"${boss.bossTaunt!}"',
+                          style: TextStyle(
+                            color: isOverdue ? AppColors.danger : AppColors.textSecondary,
+                            fontSize: 10,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ).animate(onPlay: (c) => isOverdue ? c.repeat(reverse: true) : null)
+                         .shake(duration: 1.seconds, hz: isOverdue ? 2 : 0),
+                      ],
                     ],
                   ),
                 ),

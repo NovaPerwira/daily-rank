@@ -92,6 +92,8 @@ class TransactionModel {
   final DateTime date;
   /// For income transactions: 'fixed' (gaji tetap) or 'side' (pendapatan sampingan)
   final String? incomeType;
+  /// Specific note / description (e.g. pengeluaran untuk apa, pemasukan dari apa)
+  final String? note;
 
   const TransactionModel({
     required this.id,
@@ -101,17 +103,32 @@ class TransactionModel {
     this.category,
     required this.date,
     this.incomeType,
+    this.note,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    final rawCategory = json['category'] as String?;
+    String? category = rawCategory;
+    String? note = json['note'] as String?;
+
+    // Auto-extract note if category was previously stored with "Category — Note"
+    if ((note == null || note.trim().isEmpty) &&
+        rawCategory != null &&
+        rawCategory.contains(' — ')) {
+      final parts = rawCategory.split(' — ');
+      category = parts[0].trim();
+      note = parts.sublist(1).join(' — ').trim();
+    }
+
     return TransactionModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
       type: json['type'] as String,
       amount: (json['amount'] as num).toDouble(),
-      category: json['category'] as String?,
+      category: category,
       date: DateTime.parse(json['date'] as String),
       incomeType: json['income_type'] as String?,
+      note: note,
     );
   }
 
@@ -123,6 +140,7 @@ class TransactionModel {
       'category': category,
       'date': date.toIso8601String().split('T')[0],
       if (incomeType != null) 'income_type': incomeType,
+      'note': note,
     };
   }
 
@@ -134,7 +152,30 @@ class TransactionModel {
       'category': category,
       'date': date.toIso8601String().split('T')[0],
       'income_type': incomeType, // always send, null is valid
+      'note': note,
     };
+  }
+
+  TransactionModel copyWith({
+    String? id,
+    String? userId,
+    String? type,
+    double? amount,
+    String? category,
+    DateTime? date,
+    String? incomeType,
+    String? note,
+  }) {
+    return TransactionModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      type: type ?? this.type,
+      amount: amount ?? this.amount,
+      category: category ?? this.category,
+      date: date ?? this.date,
+      incomeType: incomeType ?? this.incomeType,
+      note: note ?? this.note,
+    );
   }
 }
 

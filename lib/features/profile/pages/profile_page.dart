@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:life_rank/features/auth/providers/auth_provider.dart';
 import 'package:life_rank/core/constants/app_colors.dart';
 import 'package:life_rank/core/constants/financial_rank_config.dart';
 import 'package:life_rank/core/models/category_models.dart';
 import 'package:life_rank/core/services/user_stats_service.dart';
+import 'package:life_rank/core/services/backup_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -21,6 +23,8 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isUploadingAvatar = false;
   List<TransactionModel> _transactions = [];
   bool _loadedTx = false;
+  bool _isExporting = false;
+  bool _isImporting = false;
 
   @override
   void initState() {
@@ -39,6 +43,388 @@ class _ProfilePageState extends State<ProfilePage> {
         _loadedTx = true;
       });
     }
+  }
+
+  Future<void> _exportData() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.supabaseUser == null) return;
+
+    // Tampilkan pilihan format backup
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Pilih Format Backup',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Backup mencakup nominal, kategori, tanggal, serta catatan keperluan/sumber dana.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: AppColors.cardBorder),
+                ),
+                leading: const Text('📊', style: TextStyle(fontSize: 24)),
+                title: const Text('Format CSV (Excel / Spreadsheet)',
+                    style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Tabel rapi untuk dibuka di Excel atau Google Sheets',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                onTap: () => Navigator.pop(ctx, 'csv'),
+              ),
+              const SizedBox(height: 10),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: AppColors.cardBorder),
+                ),
+                leading: const Text('📦', style: TextStyle(fontSize: 24)),
+                title: const Text('Format JSON (Backup Lengkap)',
+                    style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Struktur utuh dengan metadata & ringkasan otomatis',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                onTap: () => Navigator.pop(ctx, 'json'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (choice == null) return;
+
+    setState(() => _isExporting = true);
+    try {
+      if (choice == 'json') {
+        await BackupService.exportTransactionsJson(auth.supabaseUser!.id);
+      } else {
+        await BackupService.exportTransactionsCsv(auth.supabaseUser!.id);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              choice == 'json' ? 'Backup JSON berhasil diekspor!' : 'Backup CSV berhasil diekspor!',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: AppColors.card,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export gagal: $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  Future<void> _importData() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.supabaseUser == null) return;
+
+    setState(() => _isImporting = true);
+    try {
+      final result = await BackupService.importTransactionsWithReport(auth.supabaseUser!.id);
+      if (result != null && mounted) {
+        await _loadTransactions();
+        await auth.refreshStats();
+        if (!mounted) return;
+        _showImportSummarySheet(context, result);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import gagal: $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
+    }
+  }
+
+  void _showImportSummarySheet(BuildContext context, ImportResult result) {
+    final currencyFmt = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.68,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        expand: false,
+        builder: (_, scrollController) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: ListView(
+            controller: scrollController,
+            children: [
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.xpGreen.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('📊', style: TextStyle(fontSize: 22)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Laporan Import Transaksi',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          '${result.successCount} transaksi berhasil diproses dari ${result.totalRows} baris',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Overview Cards
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Column(
+                  children: [
+                    _buildSummaryRow(
+                      'Pemasukan Terimpor',
+                      currencyFmt.format(result.totalIncome),
+                      AppColors.xpGreen,
+                      '💵',
+                    ),
+                    const Divider(color: AppColors.cardBorder, height: 20),
+                    _buildSummaryRow(
+                      'Pengeluaran Terimpor',
+                      currencyFmt.format(result.totalExpense),
+                      AppColors.danger,
+                      '💸',
+                    ),
+                    const Divider(color: AppColors.cardBorder, height: 20),
+                    _buildSummaryRow(
+                      'Tabungan & Investasi',
+                      currencyFmt.format(result.totalSaving + result.totalInvestment),
+                      AppColors.financial,
+                      '🏦',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Kategori Terbanyak
+              if (result.categoryCounts.isNotEmpty) ...[
+                const Text(
+                  'RINCIAN KATEGORI TERIMPOR',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Column(
+                    children: result.categoryCounts.entries.take(6).map((e) {
+                      final amount = result.categoryAmounts[e.key] ?? 0;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Text(
+                              e.key,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '${e.value} tx (${currencyFmt.format(amount)})',
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Catatan / Validation Errors jika ada
+              if (result.hasErrors) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: AppColors.gold, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'CATATAN VALIDASI (${result.errorCount} BARIS DILEWATI)',
+                      style: const TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: result.validationErrors.take(5).map((err) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '• $err',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('TUTUP & SELESAI', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value, Color color, String emoji) {
+    return Row(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 16)),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
   }
 
   double get _totalSavingsIdr {
@@ -354,6 +740,86 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
 
                   const SizedBox(height: 16),
+
+                  // Data & Backup
+                  Row(
+                    children: [
+                      Container(
+                          width: 4,
+                          height: 18,
+                          decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(2))),
+                      const SizedBox(width: 10),
+                      const Text('DATA & BACKUP',
+                          style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 2)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Export Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _isExporting ? null : _exportData,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.card,
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: _isExporting
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.file_download_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text('EXPORT TRANSACTIONS',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700, letterSpacing: 1)),
+                              ],
+                            ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Import Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _isImporting ? null : _importData,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.card,
+                        foregroundColor: AppColors.gold,
+                        side: BorderSide(color: AppColors.gold.withValues(alpha: 0.5)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: _isImporting
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.file_upload_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text('IMPORT TRANSACTIONS',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700, letterSpacing: 1)),
+                              ],
+                            ),
+                    ),
+                  ).animate().fadeIn(duration: 500.ms, delay: 300.ms),
+
+                  const SizedBox(height: 32),
 
                   // Logout button
                   SizedBox(

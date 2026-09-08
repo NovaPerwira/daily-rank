@@ -89,21 +89,27 @@ class _DashboardPageState extends State<DashboardPage> {
     return income - expense + investmentExpense;
   }
 
-  /// HP Financial Health: (Income - PureExpense) / Income
+  /// HP Financial Health: (Income - PureExpense) / Income (Current Month Only)
   double get _financialHpPercentage {
+    final now = DateTime.now();
     double income = 0;
     double pureExpense = 0;
+    
     for (final t in _transactions) {
-      if (t.type == 'income') {
-        income += t.amount;
-      } else if (t.type == 'expense') {
-        final cat = t.category?.toLowerCase() ?? '';
-        final isAsset = cat.contains('investasi') || cat.contains('tabungan') || cat.contains('dana darurat');
-        if (!isAsset) {
-          pureExpense += t.amount;
+      final date = t.date;
+      if (date.year == now.year && date.month == now.month) {
+        if (t.type == 'income') {
+          income += t.amount;
+        } else if (t.type == 'expense') {
+          final cat = t.category?.toLowerCase() ?? '';
+          final isAsset = cat.contains('investasi') || cat.contains('tabungan') || cat.contains('dana darurat');
+          if (!isAsset) {
+            pureExpense += t.amount;
+          }
         }
       }
     }
+    
     if (income == 0) return pureExpense > 0 ? 0.0 : 1.0;
     double hp = (income - pureExpense) / income;
     return hp.clamp(0.0, 1.0);
@@ -356,48 +362,6 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
       ).animate().slideX(begin: 1.0).fadeIn(),
-    );
-  }
-}
-
-// ── Section Label ─────────────────────────────────────────────────────────────
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _SectionLabel({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.4),
-                blurRadius: 6,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 2.5,
-          ),
-        ),
-      ],
     );
   }
 }

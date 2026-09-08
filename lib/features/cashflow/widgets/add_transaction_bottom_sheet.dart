@@ -24,6 +24,7 @@ class _AddTransactionBottomSheetState extends State<AddTransactionBottomSheet> {
   final _formKey = GlobalKey<FormState>();
   final _amountCtrl = TextEditingController();
   final _categoryCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
 
   // 'income', 'expense', 'saving', 'investment'
   String _type = 'income';
@@ -42,6 +43,7 @@ class _AddTransactionBottomSheetState extends State<AddTransactionBottomSheet> {
       }
       _amountCtrl.text = widget.existingTransaction!.amount.toStringAsFixed(0);
       _categoryCtrl.text = widget.existingTransaction!.category ?? '';
+      _noteCtrl.text = widget.existingTransaction!.note ?? '';
       _selectedDate = widget.existingTransaction!.date;
     }
   }
@@ -57,6 +59,7 @@ class _AddTransactionBottomSheetState extends State<AddTransactionBottomSheet> {
   void dispose() {
     _amountCtrl.dispose();
     _categoryCtrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
@@ -119,6 +122,7 @@ class _AddTransactionBottomSheetState extends State<AddTransactionBottomSheet> {
             ? _categoryCtrl.text.trim()
             : defaultCategory,
         incomeType: _type == 'income' ? 'fixed' : null,
+        note: _noteCtrl.text.trim().isNotEmpty ? _noteCtrl.text.trim() : null,
       );
 
       if (_isEditMode) {
@@ -320,6 +324,35 @@ class _AddTransactionBottomSheetState extends State<AddTransactionBottomSheet> {
                 ),
               ),
             ],
+            const SizedBox(height: 14),
+
+            // ── Keperluan / Sumber (Catatan) ──────────────────────────────
+            TextFormField(
+              controller: _noteCtrl,
+              style: const TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                labelText: _type == 'expense'
+                    ? 'Pengeluaran untuk apa? (Catatan)'
+                    : 'Pemasukan dari apa? (Catatan)',
+                hintText: _type == 'expense'
+                    ? 'Contoh: Nasi padang, bayar wifi, beli baju'
+                    : 'Contoh: Gaji pokok, freelance web, bonus',
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                labelStyle: const TextStyle(color: AppColors.textSecondary),
+                filled: true,
+                fillColor: AppColors.card,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: Icon(
+                  _type == 'expense'
+                      ? Icons.receipt_long_outlined
+                      : Icons.account_balance_wallet_outlined,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
 
             // ── Tanggal ───────────────────────────────────────────────────

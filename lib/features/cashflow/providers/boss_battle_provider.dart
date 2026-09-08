@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import 'package:life_rank/core/models/fixed_bill_model.dart';
 import 'package:life_rank/core/models/category_models.dart';
 import 'package:life_rank/core/services/user_stats_service.dart';
+import 'package:life_rank/core/services/ai_quest_service.dart';
 import 'package:life_rank/features/auth/providers/auth_provider.dart';
 
 class BossBattleProvider extends ChangeNotifier {
@@ -29,6 +30,30 @@ class BossBattleProvider extends ChangeNotifier {
     ];
     // Check initial penalties
     _applyBossAttacks();
+    _loadBossProfiles();
+  }
+
+  Future<void> _loadBossProfiles() async {
+    bool changed = false;
+    for (int i = 0; i < _bosses.length; i++) {
+      if (_bosses[i].bossName == null) {
+        try {
+          final profile = await AiQuestService.generateBossProfile(
+            _bosses[i].name, 
+            _bosses[i].amount
+          );
+          _bosses[i].bossName = profile['bossName'];
+          _bosses[i].bossIcon = profile['bossIcon'];
+          _bosses[i].bossTaunt = profile['bossTaunt'];
+          changed = true;
+          // Notify listeners sequentially so UI updates one by one
+          notifyListeners();
+        } catch (e) {
+          debugPrint('Failed to load boss profile for ${_bosses[i].name}: $e');
+        }
+      }
+    }
+    if (changed) notifyListeners();
   }
 
   void _applyBossAttacks() {

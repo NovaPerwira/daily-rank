@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:life_rank/core/models/gacha_reward_model.dart';
 import 'package:life_rank/core/services/user_stats_service.dart';
+import 'package:life_rank/core/services/ai_quest_service.dart';
 import 'package:life_rank/features/auth/providers/auth_provider.dart';
 
 class GachaProvider extends ChangeNotifier {
@@ -54,20 +55,35 @@ class GachaProvider extends ChangeNotifier {
     int randomWeight = Random().nextInt(totalWeight);
     int currentWeight = 0;
 
-    GachaReward? wonReward;
+    GachaReward? baseReward;
     for (final item in _pool) {
       currentWeight += item.dropRate;
       if (randomWeight < currentWeight) {
-        wonReward = item;
+        baseReward = item;
         break;
       }
     }
     
-    wonReward ??= _pool.last;
-
-    // Apply the reward
+    baseReward ??= _pool.last;
+    
+    GachaReward wonReward = baseReward;
     final user = auth.supabaseUser;
+    
     if (user != null) {
+      try {
+        final totalXp = auth.stats?.totalXp ?? 0;
+        final customReward = await AiQuestService.generateCustomGachaReward(
+          user.id, 
+          baseReward.rarity, 
+          totalXp, 
+          baseReward.dropRate
+        );
+        wonReward = customReward;
+      } catch (e) {
+        debugPrint('Failed to generate custom Gacha Reward: $e');
+        // fallback to baseReward
+      }
+
       await UserStatsService.updateCategoryXp(user.id, 'financial', wonReward.xpReward);
       await auth.refreshStats();
     }

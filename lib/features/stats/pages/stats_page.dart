@@ -9,6 +9,7 @@ import 'package:life_rank/features/auth/providers/auth_provider.dart';
 import 'package:life_rank/features/dashboard/widgets/financial_metrics_row.dart';
 import 'package:life_rank/features/dashboard/widgets/category_card.dart';
 import 'package:life_rank/features/dashboard/widgets/monthly_streak_widget.dart';
+import 'package:life_rank/features/stats/widgets/cashflow_chart_widget.dart';
 
 class StatsPage extends StatefulWidget {
   const StatsPage({super.key});
@@ -104,6 +105,19 @@ class _StatsPageState extends State<StatsPage> {
                     transactions: _transactions,
                     currencyMode: _currencyMode,
                   ),
+
+                  const SizedBox(height: 32),
+
+                  // ── Cashflow Chart ──────────────────────────────
+                  const _StatsSectionLabel(
+                    label: 'CASHFLOW (6 BULAN)',
+                    color: AppColors.financial,
+                  ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
+
+                  const SizedBox(height: 12),
+
+                  CashflowChartWidget(transactions: _transactions)
+                      .animate().fadeIn(duration: 500.ms, delay: 200.ms),
 
                   const SizedBox(height: 32),
 

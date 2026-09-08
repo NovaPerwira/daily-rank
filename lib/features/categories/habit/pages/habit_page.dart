@@ -5,6 +5,7 @@ import 'package:life_rank/core/constants/app_colors.dart';
 import 'package:life_rank/core/constants/rank_config.dart';
 import 'package:life_rank/core/models/category_models.dart';
 import 'package:life_rank/core/services/user_stats_service.dart';
+import 'package:life_rank/core/services/ai_quest_service.dart';
 import 'package:life_rank/shared/widgets/animated_xp_bar.dart';
 import 'package:life_rank/shared/widgets/rank_badge_widget.dart';
 import 'package:life_rank/shared/widgets/achievement_popup.dart';
@@ -40,6 +41,71 @@ class _HabitPageState extends State<HabitPage> {
         _loading = false;
       });
     }
+  }
+
+  bool _isGeneratingQuests = false;
+
+  Future<void> _showAiQuestGenerator() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.supabaseUser == null) return;
+    
+    final promptController = TextEditingController();
+    
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('✨ AI Quest Generator', style: TextStyle(color: AppColors.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('What do you want to focus on today?', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: promptController,
+              style: const TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'e.g., Learn Flutter, Clean the house, Be productive',
+                hintStyle: TextStyle(color: AppColors.textMuted),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.habit),
+            onPressed: () async {
+              if (promptController.text.trim().isEmpty) return;
+              Navigator.pop(ctx, promptController.text.trim());
+            },
+            child: const Text('Generate', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    ).then((prompt) async {
+      if (prompt != null && prompt is String) {
+        setState(() => _isGeneratingQuests = true);
+        try {
+          final quests = await AiQuestService.generateQuests(auth.supabaseUser!.id, prompt, category: 'habit');
+          await UserStatsService.addCustomQuests(quests);
+          await _loadQuests(); // reload to get the new quests
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to generate quests: $e')));
+        } finally {
+          if (mounted) setState(() => _isGeneratingQuests = false);
+        }
+      }
+    });
   }
 
   Future<void> _completeQuest(QuestModel quest) async {
@@ -93,6 +159,14 @@ class _HabitPageState extends State<HabitPage> {
       appBar: AppBar(
         title: const Text('🔥 Habit'),
         backgroundColor: AppColors.background,
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isGeneratingQuests ? null : _showAiQuestGenerator,
+        backgroundColor: AppColors.habit,
+        icon: _isGeneratingQuests 
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+            : const Icon(Icons.auto_awesome, color: Colors.white),
+        label: Text(_isGeneratingQuests ? 'Generating...' : 'AI Quests', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: RefreshIndicator(
         onRefresh: _loadQuests,

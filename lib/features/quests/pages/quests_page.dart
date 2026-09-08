@@ -9,6 +9,7 @@ import 'package:life_rank/features/auth/providers/auth_provider.dart';
 import 'package:life_rank/features/cashflow/providers/boss_battle_provider.dart';
 import 'package:life_rank/features/dashboard/widgets/daily_financial_todos.dart';
 import 'package:life_rank/features/dashboard/widgets/boss_battle_card.dart';
+import 'package:life_rank/core/services/ai_quest_service.dart';
 
 class QuestsPage extends StatefulWidget {
   const QuestsPage({super.key});
@@ -20,6 +21,7 @@ class QuestsPage extends StatefulWidget {
 class _QuestsPageState extends State<QuestsPage> {
   List<FinancialTodo> _todos = [];
   bool _isLoading = true;
+  bool _isGeneratingQuests = false;
 
   @override
   void initState() {
@@ -108,6 +110,68 @@ class _QuestsPageState extends State<QuestsPage> {
     if (mounted) setState(() => _todos = updated);
   }
 
+  Future<void> _showAiQuestGenerator() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.supabaseUser == null) return;
+    
+    final promptController = TextEditingController();
+    
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('✨ AI Quest Generator', style: TextStyle(color: AppColors.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Fokus misi finansial hari ini?', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: promptController,
+              style: const TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Cth: Hemat, Investasi, Tambah income',
+                hintStyle: TextStyle(color: AppColors.textMuted),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              if (promptController.text.trim().isEmpty) return;
+              Navigator.pop(ctx, promptController.text.trim());
+            },
+            child: const Text('Generate', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    ).then((prompt) async {
+      if (prompt != null && prompt is String) {
+        setState(() => _isGeneratingQuests = true);
+        try {
+          final todos = await AiQuestService.generateFinancialTodos(auth.supabaseUser!.id, prompt);
+          await UserStatsService.addCustomFinancialTodos(todos);
+          await _loadTodos();
+        } catch (e) {
+          _showSnack('Gagal generate: $e');
+        } finally {
+          if (mounted) setState(() => _isGeneratingQuests = false);
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final bossProvider = context.watch<BossBattleProvider>();
@@ -130,6 +194,14 @@ class _QuestsPageState extends State<QuestsPage> {
         centerTitle: true,
         backgroundColor: AppColors.background,
         elevation: 0,
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isGeneratingQuests ? null : _showAiQuestGenerator,
+        backgroundColor: AppColors.primary,
+        icon: _isGeneratingQuests 
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+            : const Icon(Icons.auto_awesome, color: Colors.white),
+        label: Text(_isGeneratingQuests ? 'Generating...' : 'AI Quests', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator(color: AppColors.primary))

@@ -118,10 +118,14 @@ class _GachaModalState extends State<GachaModal> {
             const SizedBox(height: 32),
 
             // Box / Result Area
-            SizedBox(
-              height: 180,
-              child: Center(
-                child: _buildBoxContent(),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 180),
+                child: Center(
+                  child: _buildBoxContent(),
+                ),
               ),
             ),
 
@@ -184,9 +188,10 @@ class _GachaModalState extends State<GachaModal> {
           const SizedBox(height: 4),
           Text(
             _result!.rewardName,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.w900,
             ),
           ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.5),
@@ -199,6 +204,18 @@ class _GachaModalState extends State<GachaModal> {
               fontWeight: FontWeight.w800,
             ),
           ).animate().fadeIn(delay: 400.ms).scaleXY(),
+          if (_result!.motivation != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              '"${_result!.motivation!}"',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+              ),
+            ).animate().fadeIn(delay: 600.ms),
+          ],
         ],
       );
     }

@@ -151,8 +151,9 @@ class _ScanReceiptPageState extends State<ScanReceiptPage> {
           type: 'expense',
           amount: item.effectiveTotal,
           date: _date,
-          category: '$_category — ${item.name}',
+          category: _category,
           incomeType: null,
+          note: item.name,
         );
         await UserStatsService.addTransaction(tx);
       }
