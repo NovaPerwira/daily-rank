@@ -110,7 +110,7 @@ class _StatsPageState extends State<StatsPage> {
 
                   // ── Cashflow Chart ──────────────────────────────
                   const _StatsSectionLabel(
-                    label: 'CASHFLOW (6 BULAN)',
+                    label: 'CASHFLOW (6 MONTHS)',
                     color: AppColors.financial,
                   ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
 
@@ -180,7 +180,7 @@ class _StatsPageState extends State<StatsPage> {
 
                   // ── Streak Bulan Ini ──────────────────────────
                   const _StatsSectionLabel(
-                    label: 'STREAK BULAN INI',
+                    label: 'MONTHLY STREAK',
                     color: AppColors.habit,
                   ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
 

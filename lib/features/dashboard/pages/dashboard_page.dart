@@ -69,6 +69,14 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning ☀️';
+    if (hour < 17) return 'Good afternoon 👋';
+    if (hour < 21) return 'Good evening 🌆';
+    return 'Good night 🌙';
+  }
+
   /// Net Worth for Rank = Pemasukan - Pengeluaran (pengeluaran investasi/tabungan tidak mengurangi rank)
   double get _rankNetWorthIdr {
     double income = 0, expense = 0, investmentExpense = 0;
@@ -210,11 +218,33 @@ class _DashboardPageState extends State<DashboardPage> {
                     toolbarHeight: 60,
                     floating: true,
                     pinned: true,
-                    backgroundColor: AppColors.background.withValues(alpha: 0.9),
+                    backgroundColor: AppColors.background.withValues(alpha: 0.95),
                     elevation: 0,
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _getGreeting(),
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          profile.username,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
                     actions: [
                       IconButton(
-                        tooltip: 'Simulasi Payday (Safe Zone)',
+                        tooltip: _isSimulatePayday ? 'Disable Safe Zone' : 'Enable Safe Zone (Payday Mode)',
                         icon: Icon(
                           _isSimulatePayday ? Icons.shield_rounded : Icons.shield_outlined,
                           color: _isSimulatePayday ? Colors.amberAccent : AppColors.textSecondary,
@@ -225,19 +255,24 @@ class _DashboardPageState extends State<DashboardPage> {
                             _isSimulatePayday = !_isSimulatePayday;
                           });
                           if (_isSimulatePayday) {
-                            _showSnack('Safe Zone Diaktifkan! Uang kebal hukuman.');
+                            _showSnack('Safe Zone activated! Expenses won\'t penalise your rank.');
+                          } else {
+                            _showSnack('Safe Zone disabled.');
                           }
                         },
                       ),
                       IconButton(
+                        tooltip: 'Lucky Box',
                         icon: const Icon(Icons.inventory_2_rounded, color: AppColors.xpGreen, size: 22),
                         onPressed: () => GachaModal.show(context),
                       ),
                       IconButton(
+                        tooltip: 'Cash Flow',
                         icon: const Icon(Icons.receipt_long, color: AppColors.financial, size: 22),
                         onPressed: () => context.push('/cashflow'),
                       ),
                       IconButton(
+                        tooltip: 'Refresh',
                         icon: const Icon(Icons.refresh_rounded,
                             color: AppColors.textSecondary, size: 22),
                         onPressed: () async {
@@ -245,7 +280,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           await _loadInitialData();
                         },
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                     ],
                   ),
 
@@ -344,7 +379,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   const Icon(Icons.inventory_2_rounded, color: AppColors.xpGreen, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    '${provider.tickets} Gacha Tersedia!',
+                    '${provider.tickets} Lucky Box${provider.tickets != 1 ? 'es' : ''} Ready!',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,

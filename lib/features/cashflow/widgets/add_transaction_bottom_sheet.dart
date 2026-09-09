@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:life_rank/core/constants/app_colors.dart';
 import 'package:life_rank/core/models/category_models.dart';
+import 'package:life_rank/core/models/receipt_item_model.dart';
 import 'package:life_rank/core/services/user_stats_service.dart';
 import 'package:life_rank/features/auth/providers/auth_provider.dart';
 
@@ -43,7 +44,11 @@ class _AddTransactionBottomSheetState extends State<AddTransactionBottomSheet> {
       }
       _amountCtrl.text = widget.existingTransaction!.amount.toStringAsFixed(0);
       _categoryCtrl.text = widget.existingTransaction!.category ?? '';
-      _noteCtrl.text = widget.existingTransaction!.note ?? '';
+      if (widget.existingTransaction!.isReceiptGroup) {
+        _noteCtrl.text = widget.existingTransaction!.receiptMerchant ?? '';
+      } else {
+        _noteCtrl.text = widget.existingTransaction!.note ?? '';
+      }
       _selectedDate = widget.existingTransaction!.date;
     }
   }
@@ -112,6 +117,19 @@ class _AddTransactionBottomSheetState extends State<AddTransactionBottomSheet> {
         _            => 'Lain-lain',
       };
 
+      String? finalNote = _noteCtrl.text.trim().isNotEmpty ? _noteCtrl.text.trim() : null;
+      if (_isEditMode && widget.existingTransaction!.isReceiptGroup) {
+        final oldData = widget.existingTransaction!.receiptData!;
+        final updatedMerchant = _noteCtrl.text.trim().isNotEmpty
+            ? _noteCtrl.text.trim()
+            : oldData.merchant;
+        final updatedData = ReceiptGroupData(
+          merchant: updatedMerchant,
+          items: oldData.items,
+        );
+        finalNote = updatedData.toEncodedNote();
+      }
+
       final tx = TransactionModel(
         id: _isEditMode ? widget.existingTransaction!.id : '',
         userId: auth.supabaseUser!.id,
@@ -122,7 +140,7 @@ class _AddTransactionBottomSheetState extends State<AddTransactionBottomSheet> {
             ? _categoryCtrl.text.trim()
             : defaultCategory,
         incomeType: _type == 'income' ? 'fixed' : null,
-        note: _noteCtrl.text.trim().isNotEmpty ? _noteCtrl.text.trim() : null,
+        note: finalNote,
       );
 
       if (_isEditMode) {
@@ -305,6 +323,7 @@ class _AddTransactionBottomSheetState extends State<AddTransactionBottomSheet> {
                   children: [
                     'Kebutuhan Pokok',
                     'Investasi',
+                    'Bisnis',
                     'Tabungan',
                     'Dana Darurat',
                     'Healing',

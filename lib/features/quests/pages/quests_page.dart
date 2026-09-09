@@ -82,7 +82,7 @@ class _QuestsPageState extends State<QuestsPage> {
       final idx = _todos.indexWhere((t) => t.id == todo.id);
       if (idx != -1) _todos[idx].completed = true;
     });
-    _showSnack('${todo.icon} +$finalPoints pts — Kerja bagus! 🔥${isHighlighted ? " (Misi Utama 2x XP)" : ""}');
+    _showSnack('${todo.icon} +$finalPoints pts — Great work! 🔥${isHighlighted ? " (Main Quest 2× XP)" : ""}');
   }
 
   Future<void> _deleteTodo(FinancialTodo todo) async {
@@ -125,13 +125,13 @@ class _QuestsPageState extends State<QuestsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Fokus misi finansial hari ini?', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+            const Text('What\'s your financial focus today?', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
             const SizedBox(height: 12),
             TextField(
               controller: promptController,
               style: const TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
-                hintText: 'Cth: Hemat, Investasi, Tambah income',
+                hintText: 'e.g. Save more, Invest, Grow income',
                 hintStyle: TextStyle(color: AppColors.textMuted),
                 filled: true,
                 fillColor: AppColors.background,
@@ -144,7 +144,7 @@ class _QuestsPageState extends State<QuestsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
@@ -164,7 +164,7 @@ class _QuestsPageState extends State<QuestsPage> {
           await UserStatsService.addCustomFinancialTodos(todos);
           await _loadTodos();
         } catch (e) {
-          _showSnack('Gagal generate: $e');
+          _showSnack('Failed to generate quests: $e');
         } finally {
           if (mounted) setState(() => _isGeneratingQuests = false);
         }
@@ -190,7 +190,7 @@ class _QuestsPageState extends State<QuestsPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('TUGAS & GAME', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 2)),
+        title: const Text('QUESTS & BATTLES', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 2)),
         centerTitle: true,
         backgroundColor: AppColors.background,
         elevation: 0,
@@ -201,7 +201,7 @@ class _QuestsPageState extends State<QuestsPage> {
         icon: _isGeneratingQuests 
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
             : const Icon(Icons.auto_awesome, color: Colors.white),
-        label: Text(_isGeneratingQuests ? 'Generating...' : 'AI Quests', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: Text(_isGeneratingQuests ? 'Generating...' : 'AI Quests  ✨', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -214,7 +214,7 @@ class _QuestsPageState extends State<QuestsPage> {
               children: [
                 if (bossProvider.bosses.isNotEmpty) ...[
                   const _QuestsSectionLabel(
-                    label: 'BOSS BATTLES (TAGIHAN)',
+                    label: 'BOSS BATTLES (BILLS)',
                     color: AppColors.danger,
                   ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
                   const SizedBox(height: 12),

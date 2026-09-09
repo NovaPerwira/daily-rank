@@ -242,7 +242,7 @@ class AppShell extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const Text(
-                'TAMBAH TRANSAKSI',
+                'ADD TRANSACTION',
                 style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 10,
@@ -290,7 +290,7 @@ class AppShell extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Scan Nota',
+                              'Scan Receipt',
                               style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 15,
@@ -299,7 +299,7 @@ class AppShell extends StatelessWidget {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Foto struk → item langsung terdeteksi otomatis',
+                              'Photo your receipt — items auto-detected',
                               style: TextStyle(
                                   color: AppColors.textMuted, fontSize: 12),
                             ),
@@ -346,7 +346,7 @@ class AppShell extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Input Manual',
+                              'Manual Entry',
                               style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 15,
@@ -355,7 +355,7 @@ class AppShell extends StatelessWidget {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Isi nominal, kategori & catatan sendiri',
+                              'Type amount, category & notes yourself',
                               style: TextStyle(
                                   color: AppColors.textMuted, fontSize: 12),
                             ),

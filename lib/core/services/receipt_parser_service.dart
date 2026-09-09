@@ -27,7 +27,7 @@ Analyze the provided receipt image and extract the data into a JSON object with 
   "merchant": "Name of the store (string or null)",
   "items": [
     {
-      "name": "Item name (string)",
+      "name": "Item name / Tax / Service / Fee (string)",
       "qty": 1, 
       "unitPrice": 10000, 
       "total": 10000 
@@ -38,8 +38,14 @@ Analyze the provided receipt image and extract the data into a JSON object with 
 Rules:
 - Only output valid JSON.
 - Convert prices into numbers (remove Rp, dots, commas).
-- Do not include noise items like "Tunai", "Kembalian", "Total", "Tax", "PPN".
-- Ensure qty is always an integer.
+- EXTRACT ALL purchased items AND ALL additional charges/fees:
+  * Regular purchased items / food / drinks / groceries
+  * Pajak / Tax / PPN / PB1 / PB01 / Pajak Resto (extract as item, e.g. "Pajak (PB1/PPN)")
+  * Biaya Layanan / Service Charge / Service Fee / Ongkir / Biaya Bungkus (extract as item, e.g. "Biaya Layanan (Service)")
+  * Pembulatan / Rounding (if present)
+  * Diskon / Potongan Harga (if discount applies, can be positive deduction amount)
+- Do NOT include payment tender lines like "Tunai", "Cash", "Kembalian", "Change", "Debit", "QRIS", "Kembali", or overall summary lines like "Total Bayar" in the items array (put the overall final sum in grandTotal).
+- Ensure qty is always an integer >= 1.
 ''';
 
     String text = '';
@@ -282,15 +288,22 @@ Rules:
       r'(?:struk|receipt|terima\s*kasih|thank\s*you|nota|invoice|kasir|cashier|'
       r'npwp|no\.?\s*trans|tanggal|date|jam|time|address|alamat|telepon|phone|'
       r'website|email|instagram|follow|powered|aplikasi|app|version|versi|'
-      r'member|point|poin|diskon\s*member|subtotal|sub\s*total|ppn|pajak|tax|'
-      r'total|grand|kembalian|change|tunai|cash|debit|kredit|credit|qris|'
-      r'bayar|payment|bayar|lunas|paid)',
+      r'member|point|poin|diskon\s*member|'
+      r'grand\s*total|total\s*bayar|jumlah\s*bayar|total\s*tagihan|'
+      r'kembalian|change|kembali|tunai|cash|debit|kredit|credit|qris|'
+      r'payment|lunas|paid)',
       caseSensitive: false,
     );
 
     // Pola 1: "NAMA ITEM   2 x 5.000   10.000"
     final patternQtyUnitTotal = RegExp(
       r'^(.+?)\s+(\d+)\s*[xX×]\s*(?:rp\.?\s*)?([0-9][0-9.,]+)\s+(?:rp\.?\s*)?([0-9][0-9.,]+)\s*$',
+    );
+
+    // Pola Khusus: Pajak, PB1, PPN, Service Charge, Biaya Layanan, Ongkir, Pembulatan
+    final patternFeeLine = RegExp(
+      r'^(?:biaya\s*)?(pajak.*?|ppn.*?|pb\s*1.*?|pb01.*?|tax.*?|service(?:\s*charge)?.*?|layanan.*?|ongkir.*?|pembulatan.*?|diskon.*?|potongan.*?)(?:[:\s]+)(?:rp\.?\s*)?([0-9][0-9.,]+)\s*$',
+      caseSensitive: false,
     );
 
     // Pola 2: "NAMA ITEM   10.000"  (qty=1, tanpa satuan)
@@ -303,9 +316,6 @@ Rules:
       r'^(.+?)\s*\.{3,}\s*(?:rp\.?\s*)?([0-9][0-9.,]{2,})\s*$',
     );
 
-    // Pola 4: "NAMA ITEM" baris, lalu baris berikutnya "2 x 5.000"
-    // Ditangani oleh multi-line look-ahead di bawah
-
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i];
 
@@ -315,6 +325,17 @@ Rules:
       if (line.length < 4) continue;
       // Skip baris yang isinya hanya angka / simbol
       if (RegExp(r'^[\d\s.,\-=*#@]+$').hasMatch(line)) continue;
+
+      // Cek apakah baris ini adalah Pajak / Service / Layanan
+      final mFee = patternFeeLine.firstMatch(line);
+      if (mFee != null) {
+        final feeName = _cleanName(mFee.group(1)!);
+        final feeTotal = _parseAmount(mFee.group(2)!) ?? 0;
+        if (feeName.isNotEmpty && feeTotal > 0) {
+          items.add(ReceiptItem(name: feeName, qty: 1, unitPrice: feeTotal, total: feeTotal));
+          continue;
+        }
+      }
 
       // Coba Pola 1: qty × unit = total
       final m1 = patternQtyUnitTotal.firstMatch(line);
@@ -412,11 +433,14 @@ Rules:
     for (final item in items) {
       if (item.effectiveTotal <= 0) continue;
       if (item.name.length < 2) continue;
-      // Tolak nama yang terdeteksi sebagai keyword footer
-      final lowerName = item.name.toLowerCase();
+
+      // Tolak baris yang murni tender uang atau ringkasan grand total struk
+      final lowerName = item.name.toLowerCase().trim();
       if (RegExp(
-        r'total|subtotal|pajak|tax|diskon|discount|kembalian|tunai|debit|kredit|qris|bayar|ppn',
-      ).hasMatch(lowerName)) { continue; }
+        r'^(?:total|grand\s*total|total\s*bayar|jumlah\s*bayar|subtotal|sub\s*total|kembalian|change|kembali|tunai|cash|debit|kredit|credit|qris|bayar)$',
+      ).hasMatch(lowerName)) {
+        continue;
+      }
 
       final key = '${item.name.toLowerCase()}|${item.effectiveTotal}';
       if (seen.contains(key)) continue;

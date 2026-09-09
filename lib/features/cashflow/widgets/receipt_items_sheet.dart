@@ -13,11 +13,12 @@ class ReceiptItemsSheet extends StatefulWidget {
   final DateTime transactionDate;
 
   /// Callback ketika user klik simpan.
-  /// Mengembalikan daftar item yang dipilih + kategori + tanggal.
+  /// Mengembalikan daftar item yang dipilih + kategori + tanggal + nama toko.
   final void Function(
     List<ReceiptItem> selectedItems,
     String category,
     DateTime date,
+    String merchant,
   ) onSave;
 
   const ReceiptItemsSheet({
@@ -35,6 +36,7 @@ class _ReceiptItemsSheetState extends State<ReceiptItemsSheet> {
   late List<ReceiptItem> _items;
   late List<bool> _checked;
   late String _category;
+  late String _merchant;
   late DateTime _date;
 
   final _currency = NumberFormat.currency(
@@ -54,6 +56,10 @@ class _ReceiptItemsSheetState extends State<ReceiptItemsSheet> {
     _items = List.from(widget.parseResult.items);
     _checked = List.filled(_items.length, true);
     _category = widget.parseResult.suggestedCategory;
+    _merchant = (widget.parseResult.merchant != null &&
+            widget.parseResult.merchant!.trim().isNotEmpty)
+        ? widget.parseResult.merchant!.trim()
+        : 'Struk Belanja';
     _date = widget.transactionDate;
   }
 
@@ -165,6 +171,45 @@ class _ReceiptItemsSheetState extends State<ReceiptItemsSheet> {
     if (picked != null && mounted) setState(() => _date = picked);
   }
 
+  void _editMerchantName() {
+    final ctrl = TextEditingController(text: _merchant);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          'Nama Toko / Tempat',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+        ),
+        content: _DialogField(
+          controller: ctrl,
+          label: 'Nama Toko',
+          icon: Icons.storefront_rounded,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              if (ctrl.text.trim().isNotEmpty) {
+                setState(() => _merchant = ctrl.text.trim());
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Simpan', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _save() {
     final selected = [
       for (int i = 0; i < _items.length; i++)
@@ -173,7 +218,7 @@ class _ReceiptItemsSheetState extends State<ReceiptItemsSheet> {
     if (selected.isEmpty) return;
     HapticFeedback.mediumImpact();
     Navigator.pop(context);
-    widget.onSave(selected, _category, _date);
+    widget.onSave(selected, _category, _date, _merchant);
   }
 
   @override
@@ -224,25 +269,43 @@ class _ReceiptItemsSheetState extends State<ReceiptItemsSheet> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.parseResult.merchant ?? 'Hasil Scan Nota',
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
+                    child: InkWell(
+                      onTap: _editMerchantName,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _merchant,
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.edit_outlined,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                            ],
                           ),
-                        ),
-                        Text(
-                          '${_items.length} item ditemukan',
-                          style: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 12,
+                          Text(
+                            '${_items.length} item ditemukan • Ketuk ubah toko',
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   // Pilih semua / batal semua
@@ -542,17 +605,56 @@ class _ItemTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.name,
-                      style: TextStyle(
-                        color: checked
-                            ? AppColors.textPrimary
-                            : AppColors.textMuted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        if (item.chargeTag != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: item.chargeTag == 'Pajak'
+                                  ? Colors.orange.withValues(alpha: 0.15)
+                                  : (item.chargeTag == 'Service'
+                                      ? Colors.blue.withValues(alpha: 0.15)
+                                      : AppColors.financial.withValues(alpha: 0.15)),
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(
+                                color: item.chargeTag == 'Pajak'
+                                    ? Colors.orange.withValues(alpha: 0.4)
+                                    : (item.chargeTag == 'Service'
+                                        ? Colors.blue.withValues(alpha: 0.4)
+                                        : AppColors.financial.withValues(alpha: 0.4)),
+                              ),
+                            ),
+                            child: Text(
+                              item.chargeTag!,
+                              style: TextStyle(
+                                color: item.chargeTag == 'Pajak'
+                                    ? Colors.orange
+                                    : (item.chargeTag == 'Service'
+                                        ? Colors.blue
+                                        : AppColors.financial),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                        Expanded(
+                          child: Text(
+                            item.name,
+                            style: TextStyle(
+                              color: checked
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                     if (item.qty > 1)
                       Text(

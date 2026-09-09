@@ -1,38 +1,40 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Backgrounds
-  static const Color background = Color(0xFF0A0E1A);
-  static const Color surface = Color(0xFF111827);
-  static const Color card = Color(0xFF1A2035);
-  static const Color cardBorder = Color(0xFF252D45);
+  // Backgrounds (Pure Black Theme)
+  static const Color background = Color(0xFF000000); // Pure Black
+  static const Color surface = Color(0xFF121212);    // Very Dark Gray
+  static const Color card = Color(0xFF18181B);       // Zinc 900 (Clean Gray)
+  static const Color cardBorder = Color(0xFF27272A); // Zinc 800
 
-  // Primary
-  static const Color primary = Color(0xFF6C63FF);
-  static const Color primaryLight = Color(0xFF8B85FF);
-  static const Color primaryDark = Color(0xFF4A42CC);
-  static const Color primaryGlow = Color(0x406C63FF);
+  // Primary (Classic Blue Set)
+  static const Color primary = Color(0xFF2563EB);    // Blue 600
+  static const Color primaryLight = Color(0xFF60A5FA); // Blue 400
+  static const Color primaryDark = Color(0xFF1D4ED8);  // Blue 700
+  static const Color primaryGlow = Color(0x402563EB);
 
-  // Accents
-  static const Color gold = Color(0xFFFFD700);
-  static const Color goldGlow = Color(0x40FFD700);
-  static const Color xpGreen = Color(0xFF00FF88);
-  static const Color xpGreenGlow = Color(0x4000FF88);
-  static const Color danger = Color(0xFFFF4757);
-  static const Color warning = Color(0xFFFF9800);
-  static const Color info = Color(0xFF2196F3);
+  // Accents (Performance Green Set & Others)
+  static const Color gold = Color(0xFFF59E0B);       // Amber 500
+  static const Color goldGlow = Color(0x40F59E0B);
+  static const Color xpGreen = Color(0xFF10B981);    // Emerald 500 (Performance Green)
+  static const Color xpGreenGlow = Color(0x4010B981);
+  
+  // Contrast Accents (Red/Orange)
+  static const Color danger = Color(0xFFEF4444);     // Red 500
+  static const Color warning = Color(0xFFF97316);    // Orange 500
+  static const Color info = Color(0xFF3B82F6);       // Blue 500
 
-  // Text
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF8B9CB8);
-  static const Color textMuted = Color(0xFF4A5568);
+  // Text (Clean Gray Set)
+  static const Color textPrimary = Color(0xFFF8FAFC);  // Slate 50
+  static const Color textSecondary = Color(0xFF94A3B8); // Slate 400
+  static const Color textMuted = Color(0xFF64748B);    // Slate 500
 
   // Category Colors
-  static const Color financial = Color(0xFF00C896);
-  static const Color career = Color(0xFF4A9EFF);
-  static const Color habit = Color(0xFFFF6B6B);
-  static const Color knowledge = Color(0xFFFFBE0B);
-  static const Color health = Color(0xFFFF6B9D);
+  static const Color financial = Color(0xFF10B981); // Emerald 500 (Performance Green)
+  static const Color career = Color(0xFF3B82F6);    // Blue 500
+  static const Color habit = Color(0xFFEF4444);     // Red 500
+  static const Color knowledge = Color(0xFFF59E0B); // Amber 500
+  static const Color health = Color(0xFFEC4899);    // Pink 500
 
   // Rank Colors
   static const Color rankWarrior = Color(0xFF8B8B8B);

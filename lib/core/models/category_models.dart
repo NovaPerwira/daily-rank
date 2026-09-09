@@ -1,3 +1,5 @@
+import 'package:life_rank/core/models/receipt_item_model.dart';
+
 class QuestModel {
   final String id;
   final String userId;
@@ -154,6 +156,24 @@ class TransactionModel {
       'income_type': incomeType, // always send, null is valid
       'note': note,
     };
+  }
+
+  /// True jika transaksi ini berasal dari struk belanja yang memiliki rincian item
+  bool get isReceiptGroup => receiptData != null;
+
+  /// Objek rincian struk (nama toko dan daftar item belanja) jika transaksi ini adalah struk
+  ReceiptGroupData? get receiptData => ReceiptGroupData.tryParse(note);
+
+  /// Nama toko dari struk jika ada
+  String? get receiptMerchant => receiptData?.merchant;
+
+  /// Catatan yang rapi untuk ditampilkan di antarmuka pengguna
+  String get displayNote {
+    if (isReceiptGroup) {
+      final data = receiptData!;
+      return '${data.merchant} (${data.items.length} item)';
+    }
+    return note ?? '';
   }
 
   TransactionModel copyWith({

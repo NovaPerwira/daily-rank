@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'app_colors.dart';
+import '../services/currency_service.dart';
 
 enum CurrencyMode { usd, idr }
 
@@ -27,8 +28,8 @@ class WealthRank {
 }
 
 class WealthConfig {
-  // Exchange rate: 1 USD = 16,000 IDR
-  static const double usdToIdr = 16000.0;
+  // Live exchange rate: 1 USD to IDR (fetched real-time from internet, default fallback 16,000)
+  static double get usdToIdr => CurrencyService.usdToIdr;
 
   // XP to wealth mapping: 1 financial XP = IDR 100,000 = ~$6.25
   static const double xpToIdr = 100000.0;

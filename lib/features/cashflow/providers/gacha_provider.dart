@@ -25,6 +25,7 @@ class GachaProvider extends ChangeNotifier {
 
   final List<GachaReward> _pool = const [
     GachaReward(id: '1', rewardName: 'Bronze Pouch', dropRate: 60, xpReward: 50, rarity: 'Common'),
+    GachaReward(id: '5', rewardName: 'Mini Self Reward', dropRate: 15, xpReward: 100, rarity: 'Uncommon'),
     GachaReward(id: '2', rewardName: 'Silver Chest', dropRate: 30, xpReward: 200, rarity: 'Rare'),
     GachaReward(id: '3', rewardName: 'Golden Vault', dropRate: 9, xpReward: 500, rarity: 'Epic'),
     GachaReward(id: '4', rewardName: 'Mythic Crystal', dropRate: 1, xpReward: 1500, rarity: 'Legendary'),

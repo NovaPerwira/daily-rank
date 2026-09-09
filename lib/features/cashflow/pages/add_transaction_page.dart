@@ -50,6 +50,7 @@ class _AddTransactionPageState extends State<AddTransactionPage>
   static const _expenseCategories = [
     'Makanan', 'Transport', 'Belanja', 'Kesehatan',
     'Hiburan', 'Tagihan', 'Cicilan', 'Dana Darurat',
+    'Investasi', 'Bisnis',
   ];
 
   static const _incomeCategories = [
@@ -221,11 +222,12 @@ class _AddTransactionPageState extends State<AddTransactionPage>
 
 
 
-  /// Simpan semua item yang dipilih dari ReceiptItemsSheet sebagai transaksi terpisah.
+  /// Simpan semua item yang dipilih dari ReceiptItemsSheet sebagai transaksi grup struk terstruktur.
   Future<void> _saveItemsFromReceipt(
     List<ReceiptItem> items,
     String category,
     DateTime date,
+    String merchant,
   ) async {
     if (items.isEmpty) return;
 
@@ -235,19 +237,24 @@ class _AddTransactionPageState extends State<AddTransactionPage>
     setState(() => _isSaving = true);
 
     try {
-      for (final item in items) {
-        final tx = TransactionModel(
-          id: '',
-          userId: auth.supabaseUser!.id,
-          type: 'expense',
-          amount: item.effectiveTotal,
-          date: date,
-          category: category,
-          incomeType: null,
-          note: item.name,
-        );
-        await UserStatsService.addTransaction(tx);
-      }
+      final totalAmount = items.fold<double>(0.0, (sum, i) => sum + i.effectiveTotal);
+      final finalMerchant = merchant.trim().isNotEmpty ? merchant.trim() : 'Struk Belanja';
+      final receiptGroup = ReceiptGroupData(
+        merchant: finalMerchant,
+        items: items,
+      );
+
+      final tx = TransactionModel(
+        id: '',
+        userId: auth.supabaseUser!.id,
+        type: 'expense',
+        amount: totalAmount,
+        date: date,
+        category: category,
+        incomeType: null,
+        note: receiptGroup.toEncodedNote(),
+      );
+      await UserStatsService.addTransaction(tx);
 
       await auth.refreshStats();
 
@@ -268,11 +275,15 @@ class _AddTransactionPageState extends State<AddTransactionPage>
               children: [
                 const Text('🧾', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 10),
-                Text(
-                  '${items.length} transaksi dari struk tersimpan!',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    'Struk $finalMerchant (${items.length} item) tersimpan!',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

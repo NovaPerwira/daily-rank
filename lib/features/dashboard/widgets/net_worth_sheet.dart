@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:life_rank/core/constants/app_colors.dart';
 import 'package:life_rank/core/constants/wealth_config.dart';
+import 'package:life_rank/core/services/currency_service.dart';
 import 'package:life_rank/shared/widgets/wealth_badge_widget.dart';
 
 /// Result returned when user submits the net worth CRUD sheet
@@ -231,7 +233,68 @@ class _NetWorthSheetState extends State<NetWorthSheet> {
                         ],
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 12),
+
+                      // Live Exchange Rate Indicator
+                      Consumer<CurrencyService>(
+                        builder: (context, currency, _) {
+                          return GestureDetector(
+                            onTap: () async {
+                              HapticFeedback.lightImpact();
+                              await CurrencyService.fetchRate(force: true);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: CurrencyService.isLive
+                                      ? AppColors.xpGreen.withValues(alpha: 0.3)
+                                      : AppColors.cardBorder,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: CurrencyService.isLive
+                                          ? AppColors.xpGreen
+                                          : AppColors.gold,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Kurs Real-Time: ${CurrencyService.formattedFullRate}',
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (CurrencyService.isLoading) ...[
+                                    const SizedBox(width: 6),
+                                    const SizedBox(
+                                      width: 10,
+                                      height: 10,
+                                      child: CircularProgressIndicator(strokeWidth: 1.5),
+                                    ),
+                                  ] else ...[
+                                    const SizedBox(width: 5),
+                                    const Icon(Icons.refresh_rounded, size: 12, color: AppColors.textMuted),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
 
                       // Amount input
                       TextFormField(

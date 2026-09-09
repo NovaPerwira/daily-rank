@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'wealth_config.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Financial Rank Config — Mobile Legends-style gamification
@@ -490,8 +491,8 @@ class FinancialRankCalculator {
 
   // ── USD Conversion ─────────────────────────────────────────────────────────
 
-  /// Exchange rate: 1 USD = Rp16.000 (aligned with WealthConfig.usdToIdr)
-  static const double usdToIdr = 16000.0;
+  /// Exchange rate: 1 USD to IDR (aligned with WealthConfig.usdToIdr)
+  static double get usdToIdr => WealthConfig.usdToIdr;
 
   /// Convert IDR amount to USD
   static double idrToUsd(double idrAmount) => idrAmount / usdToIdr;
